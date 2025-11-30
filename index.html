@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>極速筆記與音樂站</title>
+    <title>極速筆記與音樂站 (支援點擊跳轉)</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -64,7 +64,7 @@
         }
         
         .btn-bgm {
-            background: #f472b6; /* 粉色系 */
+            background: #f472b6;
             color: white;
             border: none;
             border-radius: 6px;
@@ -82,7 +82,6 @@
             overflow: hidden;
         }
 
-        /* 影片區 */
         #video-wrapper {
             background: #000;
             position: relative;
@@ -92,7 +91,6 @@
         }
         .placeholder { color: #94a3b8; text-align: center; padding: 20px;}
 
-        /* 筆記區 */
         #note-section {
             background: var(--card-bg);
             display: flex;
@@ -100,7 +98,6 @@
             position: relative;
         }
 
-        /* 工具列 */
         .toolbar {
             padding: 8px;
             background: #fff;
@@ -134,7 +131,6 @@
         .btn-import { background: #e0f2fe; color: #0284c7; border-color: #bae6fd; }
         .btn-copy { background: #1e293b; color: #fff; border: 1px solid #0f172a; }
 
-        /* 面板 (通用樣式) */
         .panel {
             display: none;
             padding: 10px;
@@ -169,7 +165,6 @@
         .bg-blue { background: #0284c7; }
         .bg-pink { background: #ec4899; }
 
-        /* 狀態列 */
         #status-bar {
             font-size: 12px;
             padding: 4px 10px;
@@ -180,7 +175,7 @@
             border-bottom: 1px solid #fde68a;
         }
 
-        /* 編輯器 */
+        /* 筆記區樣式優化 */
         textarea#notes {
             flex: 1;
             width: 100%;
@@ -191,6 +186,17 @@
             line-height: 1.6;
             font-family: monospace;
             outline: none;
+            cursor: text; /* 確保游標顯示 */
+        }
+        
+        /* 提示字 */
+        .hint-text {
+            font-size: 11px;
+            color: #94a3b8;
+            position: absolute;
+            bottom: 5px;
+            right: 10px;
+            pointer-events: none;
         }
 
         /* RWD */
@@ -263,7 +269,8 @@
             <button class="btn-confirm bg-blue" onclick="processImportManual()">確認匯入</button>
         </div>
 
-        <textarea id="notes" placeholder="開始你的學習（或聽歌）..."></textarea>
+        <textarea id="notes" placeholder="開始你的學習... &#10;💡 小技巧：在時間戳記 [00:00:10] 上「點兩下」可跳轉影片"></textarea>
+        <span class="hint-text">💡 雙擊時間碼跳轉</span>
     </div>
 </div>
 
@@ -273,10 +280,53 @@
     let currentPlatform = null; 
     let ytPlayer = null;
     let loadedUrl = ""; 
-    
-    // BGM 相關變數
     let isBgmMode = false;
     let bgmPlaylist = [];
+
+    // ★★★ 新增：監聽滑鼠雙擊事件 ★★★
+    document.getElementById('notes').addEventListener('dblclick', function(e) {
+        // 1. 取得游標位置
+        const textarea = e.target;
+        const cursorPos = textarea.selectionStart;
+        const text = textarea.value;
+
+        // 2. 找出游標所在的那一行
+        const lineStart = text.lastIndexOf('\n', cursorPos - 1) + 1;
+        let lineEnd = text.indexOf('\n', cursorPos);
+        if (lineEnd === -1) lineEnd = text.length;
+        
+        const currentLine = text.substring(lineStart, lineEnd);
+
+        // 3. 用 Regex 抓取時間格式 [HH:MM:SS] 或 [MM:SS]
+        // 支援格式: [00:00:17] 或 00:00:17
+        const timeMatch = currentLine.match(/(?:\[)?(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\])?/);
+
+        if (timeMatch) {
+            let hours = 0, minutes = 0, seconds = 0;
+            
+            if (timeMatch[3]) {
+                // 格式 HH:MM:SS
+                hours = parseInt(timeMatch[1]);
+                minutes = parseInt(timeMatch[2]);
+                seconds = parseInt(timeMatch[3]);
+            } else {
+                // 格式 MM:SS
+                minutes = parseInt(timeMatch[1]);
+                seconds = parseInt(timeMatch[2]);
+            }
+
+            const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
+
+            // 4. 控制影片跳轉
+            if (currentPlatform === 'yt' && ytPlayer && typeof ytPlayer.seekTo === 'function') {
+                ytPlayer.seekTo(totalSeconds, true);
+                showStatus(`🚀 跳轉至 ${timeMatch[0]}`, "success");
+            } else {
+                showStatus("⚠️ 僅支援 YouTube 跳轉", "warning");
+            }
+        }
+    });
+
 
     async function detectAndLoad() {
         const urlInput = document.getElementById('urlInput');
@@ -286,11 +336,9 @@
 
         if (!url) { alert("請輸入網址"); return; }
         
-        // 關閉 BGM 模式
         isBgmMode = false;
         closePanel('bgm-panel');
 
-        // UI 狀態更新
         urlInput.blur();
         btnLoad.disabled = true;
         btnLoad.innerHTML = "⌛";
@@ -308,18 +356,15 @@
             ytDiv.id = 'yt-player-slot';
             container.appendChild(ytDiv);
 
-            // 重新初始化播放器，確保 onStateChange 被綁定
             ytPlayer = new YT.Player('yt-player-slot', {
                 height: '100%',
                 width: '100%',
                 videoId: ytId,
                 events: { 
                     'onReady': (e) => e.target.playVideo(),
-                    'onStateChange': onPlayerStateChange // 綁定狀態監聽
+                    'onStateChange': onPlayerStateChange 
                 }
             });
-            
-            // 自動抓取 (失敗則靜默)
             await tryAutoFetchDescription(ytId);
 
         } else if (biliId) {
@@ -335,9 +380,8 @@
         btnLoad.innerHTML = "載入";
     }
 
-    // --- BGM 循環功能 ---
     function toggleBgmPanel() {
-        closePanel('import-panel'); // 互斥開關
+        closePanel('import-panel');
         const panel = document.getElementById('bgm-panel');
         panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
     }
@@ -346,31 +390,20 @@
         const text = document.getElementById('bgm-list').value;
         const urls = text.split('\n');
         bgmPlaylist = [];
-
-        // 解析所有網址
         urls.forEach(u => {
             const id = extractYouTubeID(u);
             if(id) bgmPlaylist.push(id);
         });
-
-        if(bgmPlaylist.length === 0) {
-            alert("找不到有效的 YouTube 連結！");
-            return;
-        }
-
+        if(bgmPlaylist.length === 0) { alert("無效連結"); return; }
         isBgmMode = true;
         closePanel('bgm-panel');
         document.getElementById('player-container').innerHTML = '<div id="yt-player-slot"></div>';
-        
-        // 播放隨機一首
         playRandomSong();
-        showStatus(`🎵 BGM 模式啟動：清單共 ${bgmPlaylist.length} 首`, "success");
+        showStatus(`🎵 BGM 模式：共 ${bgmPlaylist.length} 首`, "success");
     }
 
     function playRandomSong() {
-        const randomIndex = Math.floor(Math.random() * bgmPlaylist.length);
-        const nextId = bgmPlaylist[randomIndex];
-
+        const nextId = bgmPlaylist[Math.floor(Math.random() * bgmPlaylist.length)];
         if(ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
             ytPlayer.loadVideoById(nextId);
         } else {
@@ -378,79 +411,49 @@
                 height: '100%',
                 width: '100%',
                 videoId: nextId,
-                events: {
-                    'onReady': (e) => e.target.playVideo(),
-                    'onStateChange': onPlayerStateChange
-                }
+                events: { 'onReady': (e) => e.target.playVideo(), 'onStateChange': onPlayerStateChange }
             });
         }
     }
 
-    // 播放器狀態監聽 (核心邏輯)
     function onPlayerStateChange(event) {
-        // 如果影片結束 (State = 0) 且處於 BGM 模式
         if (event.data === YT.PlayerState.ENDED && isBgmMode) {
-            playRandomSong(); // 自動切下一首
+            playRandomSong();
         }
     }
 
-    // --- 自動抓取邏輯 (靜默失敗版) ---
     async function tryAutoFetchDescription(videoId) {
-        showStatus("正在更新資訊...", "loading");
+        showStatus("更新資訊中...", "loading");
         const apiUrl = `https://inv.tux.pizza/api/v1/videos/${videoId}`;
-
         try {
             const response = await fetch(apiUrl);
             if (!response.ok) throw new Error("API Fail");
-            
             const data = await response.json();
-            
-            // 填寫標題
             document.getElementById('noteTitle').value = data.title;
-
-            // 抓取時間軸
             const extractedChapters = parseTimeline(data.description);
-            
             if (extractedChapters) {
                 const notes = document.getElementById('notes');
                 if(notes.value.trim() === "") {
                     notes.value = extractedChapters + "\n--------------------------------\n";
-                    showStatus(`✅ 已自動匯入章節`, "success");
+                    showStatus(`✅ 自動匯入章節`, "success");
                 }
-            } else {
-                // 沒抓到也沒關係，把狀態列關掉就好
-                hideStatus();
-            }
-
-        } catch (error) {
-            // 失敗了完全不做任何事，只在 Console 留紀錄
-            console.log("自動抓取失敗 (已忽略)", error);
-            hideStatus();
-        }
+            } else { hideStatus(); }
+        } catch (error) { hideStatus(); }
     }
 
-    // --- 輔助函數 ---
     function showStatus(msg, type) {
         const bar = document.getElementById('status-bar');
         bar.style.display = 'block';
         bar.innerText = msg;
-        
         if(type === 'loading') { bar.style.background = '#e0f2fe'; bar.style.color = '#0369a1'; }
         else if(type === 'success') { bar.style.background = '#ecfdf5'; bar.style.color = '#047857'; }
+        else if(type === 'warning') { bar.style.background = '#fffbeb'; bar.style.color = '#b45309'; }
         else { bar.style.background = '#f1f5f9'; bar.style.color = '#64748b'; }
-
-        setTimeout(() => { hideStatus(); }, 4000);
+        setTimeout(() => { hideStatus(); }, 3000);
     }
+    function hideStatus() { document.getElementById('status-bar').style.display = 'none'; }
+    function closePanel(id) { document.getElementById(id).style.display = 'none'; }
 
-    function hideStatus() {
-        document.getElementById('status-bar').style.display = 'none';
-    }
-
-    function closePanel(id) {
-        document.getElementById(id).style.display = 'none';
-    }
-
-    // 其他基礎函數 (Regex, Export etc.)
     function parseTimeline(text) {
         const regex = /(\d{1,2}:\d{2}(?::\d{2})?)\s*(.*?)(?=\s*\d{1,2}:\d{2}|$)/gs;
         let match;
@@ -458,14 +461,10 @@
         let count = 0;
         while ((match = regex.exec(text)) !== null) {
             let content = match[2].trim();
-            if (content) {
-                result += `[${normalizeTime(match[1])}] 📌 ${content}\n`;
-                count++;
-            }
+            if (content) { result += `[${normalizeTime(match[1])}] 📌 ${content}\n`; count++; }
         }
         return count > 0 ? result : null;
     }
-    
     function extractYouTubeID(url) {
         var match = url.match(/^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/);
         return (match && match[7].length == 11) ? match[7] : false;
