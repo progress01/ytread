@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>極速筆記工作站 (快捷鍵版)</title>
+    <title>極速筆記工作站 (全鍵盤版)</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -82,7 +82,7 @@
         /* --- 🎮 影片控制列 --- */
         .video-controls {
             padding: 8px;
-            background: #f0f9ff; /* 淡藍色背景突顯控制區 */
+            background: #f0f9ff;
             border-bottom: 1px solid var(--border);
             display: flex;
             gap: 8px;
@@ -92,7 +92,7 @@
         
         .ctrl-btn {
             background: white;
-            border: 1px solid #94a3b8; /* 加深邊框 */
+            border: 1px solid #94a3b8;
             border-radius: 6px;
             padding: 6px 10px;
             font-size: 13px;
@@ -103,18 +103,18 @@
             gap: 4px;
             font-weight: 600;
             color: #334155;
-            box-shadow: 0 2px 0 rgba(0,0,0,0.05); /* 立體感 */
+            box-shadow: 0 2px 0 rgba(0,0,0,0.05);
         }
         .ctrl-btn:active { transform: translateY(2px); box-shadow: none; }
         .ctrl-btn:hover { border-color: var(--primary); color: var(--primary); }
 
-        /* 快捷鍵提示字 (灰色小字) */
+        /* 快捷鍵提示字 */
         .kbd-hint {
-            font-size: 11px;
+            font-size: 10px;
             color: #64748b;
             font-weight: normal;
-            margin-left: 2px;
-            background: #f1f5f9;
+            margin-left: 3px;
+            background: rgba(0,0,0,0.05);
             padding: 1px 4px;
             border-radius: 3px;
         }
@@ -135,12 +135,22 @@
         }
 
         .action-btn {
-            height: 42px; border: 1px solid transparent; border-radius: 8px;
+            height: 46px; /* 稍微加高以容納提示字 */
+            border: 1px solid transparent; border-radius: 8px;
             font-size: 13px; font-weight: 600; cursor: pointer;
-            display: flex; justify-content: center; align-items: center; gap: 3px;
+            display: flex; flex-direction: column; /* 改為垂直排列 */
+            justify-content: center; align-items: center; gap: 1px;
             box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: all 0.1s;
         }
         .action-btn:active { transform: scale(0.97); }
+        
+        /* 讓按鈕內的快捷鍵提示字更小 */
+        .action-btn .kbd-hint {
+            font-size: 9px;
+            background: rgba(255,255,255,0.4);
+            color: inherit; /* 跟隨按鈕文字顏色 */
+            opacity: 0.8;
+        }
 
         .btn-imp { background: #fee2e2; color: #dc2626; border-color: #fecaca; }
         .btn-que { background: #f5f3ff; color: #7c3aed; border-color: #ddd6fe; }
@@ -150,23 +160,12 @@
         .btn-import { background: #e0f2fe; color: #0284c7; border-color: #bae6fd; }
         .btn-copy { background: #1e293b; color: #fff; border: 1px solid #0f172a; }
 
-        .panel {
-            display: none; padding: 10px; background: #f1f5f9;
-            border-bottom: 1px solid var(--border); animation: slideDown 0.2s ease-out;
-        }
-        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-
-        textarea.panel-input {
-            width: 100%; padding: 10px; border: 1px solid #cbd5e1;
-            border-radius: 6px; font-size: 14px; margin-bottom: 8px; font-family: monospace;
-        }
+        .panel { display: none; padding: 10px; background: #f1f5f9; border-bottom: 1px solid var(--border); }
+        textarea.panel-input { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; margin-bottom: 8px; font-family: monospace; }
         .btn-confirm { width: 100%; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; }
         .bg-blue { background: #0284c7; } .bg-pink { background: #ec4899; }
 
-        #status-bar {
-            font-size: 12px; padding: 4px 10px; background: #fffbeb; color: #d97706;
-            text-align: center; display: none; border-bottom: 1px solid #fde68a;
-        }
+        #status-bar { font-size: 12px; padding: 4px 10px; background: #fffbeb; color: #d97706; text-align: center; display: none; border-bottom: 1px solid #fde68a; }
 
         textarea#notes {
             flex: 1; width: 100%; padding: 15px; border: none; resize: none;
@@ -175,10 +174,13 @@
         
         /* 底部操作指南 */
         .footer-guide { 
-            font-size: 12px; color: #64748b; padding: 5px 10px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between;
+            font-size: 12px; color: #64748b; padding: 8px 10px; background: #f8fafc; border-top: 1px solid #e2e8f0; 
+            display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center;
         }
         .key-badge {
-            background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; font-family: monospace; margin-right: 4px; border: 1px solid #cbd5e1;
+            background: #fff; color: #334155; padding: 2px 5px; border-radius: 4px; 
+            font-family: monospace; border: 1px solid #cbd5e1; font-weight: bold;
+            box-shadow: 0 1px 0 #cbd5e1;
         }
 
         /* RWD */
@@ -197,7 +199,9 @@
                 top: 0; z-index: 10; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
             }
             #note-section { flex: 1; min-height: 500px; }
-            .btn-import, .btn-copy { grid-column: span 2; } 
+            .btn-import, .btn-copy { grid-column: span 2; }
+            /* 手機版隱藏某些太小的快捷鍵提示，避免擁擠 */
+            .action-btn .kbd-hint { display: none; } 
         }
     </style>
 </head>
@@ -217,8 +221,7 @@
 <div id="status-bar" id="statusMsg"></div>
 
 <div id="bgm-panel" class="panel" style="background: #fce7f3;">
-    <textarea id="bgm-list" class="panel-input" style="height: 100px;" 
-        placeholder="貼上多首 YouTube 網址..."></textarea>
+    <textarea id="bgm-list" class="panel-input" style="height: 100px;" placeholder="貼上多首 YouTube 網址..."></textarea>
     <button class="btn-confirm bg-pink" onclick="startBgmLoop()">▶️ 循環播放</button>
 </div>
 
@@ -231,9 +234,9 @@
     
     <div id="note-section">
         <div class="video-controls">
-            <button class="ctrl-btn" onclick="seekVideo(-10)">⏪ -10s <span class="kbd-hint">Alt+J</span></button>
-            <button class="ctrl-btn" onclick="togglePlay()">⏯️ 暫停 <span class="kbd-hint">Alt+K</span></button>
-            <button class="ctrl-btn" onclick="seekVideo(10)">+10s ⏩ <span class="kbd-hint">Alt+L</span></button>
+            <button class="ctrl-btn" onclick="seekVideo(-10)">⏪ <span class="kbd-hint">Alt+J</span></button>
+            <button class="ctrl-btn" onclick="togglePlay()">⏯️ <span class="kbd-hint">Alt+K</span></button>
+            <button class="ctrl-btn" onclick="seekVideo(10)">⏩ <span class="kbd-hint">Alt+L</span></button>
             
             <div class="speed-group">
                 <button class="ctrl-btn speed-btn" onclick="setSpeed(0.5, this)">0.5x</button>
@@ -244,11 +247,21 @@
         </div>
 
         <div class="toolbar">
-            <button class="action-btn btn-imp" onclick="insertTag('重點')">❗ 重點</button>
-            <button class="action-btn btn-que" onclick="insertTag('疑問')">❓ 疑問</button>
-            <button class="action-btn btn-todo" onclick="insertTag('待辦')">☐ 待辦</button>
-            <button class="action-btn btn-test" onclick="insertTag('測試')">🧪 測試</button>
-            <button class="action-btn btn-oth" onclick="insertTag('其他')">📝 其他</button>
+            <button class="action-btn btn-imp" onclick="insertTag('重點')">
+                <span>❗ 重點</span> <span class="kbd-hint">Alt+1</span>
+            </button>
+            <button class="action-btn btn-que" onclick="insertTag('疑問')">
+                <span>❓ 疑問</span> <span class="kbd-hint">Alt+2</span>
+            </button>
+            <button class="action-btn btn-todo" onclick="insertTag('待辦')">
+                <span>☐ 待辦</span> <span class="kbd-hint">Alt+3</span>
+            </button>
+            <button class="action-btn btn-test" onclick="insertTag('測試')">
+                <span>🧪 測試</span> <span class="kbd-hint">Alt+4</span>
+            </button>
+            <button class="action-btn btn-oth" onclick="insertTag('其他')">
+                <span>📝 其他</span> <span class="kbd-hint">Alt+5</span>
+            </button>
             <button class="action-btn btn-import" onclick="toggleImportPanel()">📥 匯入</button>
             <button class="action-btn btn-copy" onclick="smartExport()">📤 匯出</button>
         </div>
@@ -258,16 +271,15 @@
             <button class="btn-confirm bg-blue" onclick="processImportManual()">確認匯入</button>
         </div>
 
-        <textarea id="notes" placeholder="開始你的學習..."></textarea>
+        <textarea id="notes" placeholder="開始你的學習...&#10;雙擊時間碼可跳轉。"></textarea>
         
         <div class="footer-guide">
-            <span>💡 雙擊時間碼跳轉</span>
-            <span>
+            <div>💡 雙擊時間碼跳轉</div>
+            <div>
                 <span class="key-badge">Alt</span> + 
-                <span class="key-badge">J</span>
-                <span class="key-badge">K</span>
-                <span class="key-badge">L</span> 控制
-            </span>
+                <span class="key-badge">1~5</span> 標籤
+                <span class="key-badge">J</span><span class="key-badge">K</span><span class="key-badge">L</span> 控制
+            </div>
         </div>
     </div>
 </div>
@@ -281,12 +293,30 @@
     let isBgmMode = false;
     let bgmPlaylist = [];
 
+    // --- 全域快捷鍵監聽 ---
     document.addEventListener('keydown', function(e) {
         if (e.altKey) {
+            // 避免與瀏覽器預設快捷鍵衝突
+            let handled = true;
+            
             switch(e.code) {
-                case 'KeyJ': e.preventDefault(); seekVideo(-10); break;
-                case 'KeyL': e.preventDefault(); seekVideo(10); break;
-                case 'KeyK': e.preventDefault(); togglePlay(); break;
+                // 右手區：控制影片
+                case 'KeyJ': seekVideo(-10); break;
+                case 'KeyL': seekVideo(10); break;
+                case 'KeyK': togglePlay(); break;
+
+                // 左手區：快速標籤 (支援主鍵盤數字鍵與數字鍵盤)
+                case 'Digit1': case 'Numpad1': insertTag('重點'); break;
+                case 'Digit2': case 'Numpad2': insertTag('疑問'); break;
+                case 'Digit3': case 'Numpad3': insertTag('待辦'); break;
+                case 'Digit4': case 'Numpad4': insertTag('測試'); break;
+                case 'Digit5': case 'Numpad5': insertTag('其他'); break;
+                
+                default: handled = false;
+            }
+
+            if(handled) {
+                e.preventDefault(); // 防止瀏覽器觸發其他行為
             }
         }
     });
