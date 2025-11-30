@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>極速影片筆記</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --border: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            margin: 0; padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
+            background: var(--bg-color);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- 頂部輸入區 --- */
+        header {
+            padding: 8px 12px;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 8px;
+            z-index: 20;
+        }
+
+        input {
+            flex: 1;
+            background: #f1f5f9;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            padding: 0 12px;
+            font-size: 16px;
+            height: 40px;
+            outline: none;
+        }
+        input:focus { background: #fff; border-color: var(--primary); }
+
+        .btn-load {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* --- 主內容區 --- */
+        #main-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* 影片區塊 */
+        #video-wrapper {
+            background: #000;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .placeholder { color: #64748b; text-align: center; padding: 20px; }
+
+        /* 筆記區塊 */
+        #note-section {
+            background: var(--card-bg);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* --- 快捷按鈕區 (新設計) --- */
+        .toolbar {
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+            background: #fff;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); /* 一行三個 */
+            gap: 8px;
+        }
+
+        .action-btn {
+            height: 44px; /* 手指好按的高度 */
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+            transition: 0.1s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .action-btn:active { transform: scale(0.96); opacity: 0.9; }
+
+        /* 各種按鈕顏色 */
+        .btn-important { background: #fee2e2; color: #dc2626; } /* 紅 */
+        .btn-question { background: #f5f3ff; color: #7c3aed; } /* 紫 */
+        .btn-todo { background: #fffbeb; color: #d97706; } /* 黃 */
+        .btn-test { background: #ecfdf5; color: #059669; } /* 綠 */
+        .btn-other { background: #f1f5f9; color: #475569; } /* 灰 */
+        .btn-copy { background: #1e293b; color: #fff; grid-column: span 1; } /* 深色 */
+
+        /* 編輯器 */
+        textarea {
+            flex: 1;
+            width: 100%;
+            padding: 16px;
+            border: none;
+            resize: none;
+            font-size: 16px;
+            line-height: 1.6;
+            font-family: monospace;
+            outline: none;
+        }
+
+        /* --- RWD --- */
+        @media (min-width: 768px) {
+            #video-wrapper { flex: 6; }
+            #note-section { flex: 4; border-left: 1px solid var(--border); }
+            iframe { width: 100%; height: 100%; }
+            .toolbar { grid-template-columns: repeat(5, 1fr); } /* 電腦版一行放多一點 */
+        }
+
+        @media (max-width: 767px) {
+            #main-container { flex-direction: column; overflow-y: auto; }
+            #video-wrapper {
+                width: 100%;
+                aspect-ratio: 16 / 9; 
+                flex: none;
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            }
+            #note-section { flex: 1; min-height: 500px; }
+            /* 手機版最後一排按鈕調整 */
+            .btn-copy { grid-column: span 1; } 
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <input type="text" id="urlInput" placeholder="貼上 YouTube 或 Bilibili 網址">
+    <button class="btn-load" onclick="detectAndLoad()">載入</button>
+</header>
+
+<div id="main-container">
+    <div id="video-wrapper">
+        <div id="player-container" style="width:100%; height:100%; display:flex; justify-content:center; align-items:center;">
+            <div class="placeholder">
+                <h3>準備學習</h3>
+                <p>貼上網址後點擊載入</p>
+            </div>
+        </div>
+    </div>
+    
+    <div id="note-section">
+        <div class="toolbar">
+            <button class="action-btn btn-important" onclick="insertWithTimestamp('[重點]')">❗ 重點</button>
+            <button class="action-btn btn-question" onclick="insertWithTimestamp('[疑問]')">❓ 疑問</button>
+            <button class="action-btn btn-todo" onclick="insertWithTimestamp('[待辦]')">☐ 待辦</button>
+            <button class="action-btn btn-test" onclick="insertWithTimestamp('[測試]')">🧪 測試</button>
+            <button class="action-btn btn-other" onclick="insertWithTimestamp('[其他]')">📝 其他</button>
+            <button class="action-btn btn-copy" onclick="copyNotes()">📋 複製</button>
+        </div>
+
+        <textarea id="notes" placeholder="點擊上方按鈕，自動插入 [時間] 與 [標籤]..."></textarea>
+    </div>
+</div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+
+<script>
+    let currentPlatform = null; 
+    let ytPlayer = null;
+
+    function detectAndLoad() {
+        const url = document.getElementById('urlInput').value.trim();
+        const container = document.getElementById('player-container');
+        const notes = document.getElementById('notes');
+
+        if (!url) return;
+
+        // 收起鍵盤
+        document.getElementById('urlInput').blur();
+        
+        container.innerHTML = '';
+        currentPlatform = null;
+
+        const ytId = extractYouTubeID(url);
+        const biliId = extractBilibiliID(url);
+
+        if (ytId) {
+            currentPlatform = 'yt';
+            let ytDiv = document.createElement('div');
+            ytDiv.id = 'yt-player-slot';
+            container.appendChild(ytDiv);
+
+            if (ytPlayer) {
+                ytPlayer.loadVideoById(ytId);
+            } else {
+                ytPlayer = new YT.Player('yt-player-slot', {
+                    height: '100%',
+                    width: '100%',
+                    videoId: ytId,
+                    events: { 'onReady': (e) => e.target.playVideo() }
+                });
+            }
+        } else if (biliId) {
+            currentPlatform = 'bili';
+            const biliEmbedUrl = `https://player.bilibili.com/player.html?bvid=${biliId}&high_quality=1&danmaku=0`;
+            container.innerHTML = `<iframe src="${biliEmbedUrl}" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"></iframe>`;
+            
+            if(notes.value.trim() === "") {
+                notes.value = `來源: https://www.bilibili.com/video/${biliId}\n\n`;
+            }
+        } else {
+            alert("網址格式錯誤");
+        }
+    }
+
+    function extractYouTubeID(url) {
+        var match = url.match(/^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/);
+        return (match && match[7].length == 11) ? match[7] : false;
+    }
+
+    function extractBilibiliID(url) {
+        var match = url.match(/(BV[a-zA-Z0-9]+)/);
+        return match ? match[1] : false;
+    }
+
+    // ★★★ 新邏輯：插入標籤同時嘗試插入時間 ★★★
+    function insertWithTimestamp(tag) {
+        let timePrefix = "";
+
+        // 只有在 YouTube 模式且播放器準備好時，才抓取時間
+        if (currentPlatform === 'yt' && ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
+            const time = ytPlayer.getCurrentTime();
+            timePrefix = `[${formatTime(time)}] `;
+        }
+        
+        // 最終插入格式： [05:30] [重點] 
+        // 如果是 B 站，就會變成： [重點]
+        insertTextAtCursor(`\n${timePrefix}${tag} `);
+    }
+
+    function insertTextAtCursor(text) {
+        const textarea = document.getElementById('notes');
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        
+        const before = textarea.value.substring(0, start);
+        const after = textarea.value.substring(end, textarea.value.length);
+        
+        textarea.value = before + text + after;
+        
+        textarea.focus();
+        textarea.selectionStart = textarea.selectionEnd = start + text.length;
+    }
+
+    function formatTime(seconds) {
+        var date = new Date(0);
+        date.setSeconds(seconds);
+        return date.toISOString().substr(11, 8);
+    }
+    
+    function copyNotes() {
+        const notes = document.getElementById('notes');
+        notes.select();
+        document.execCommand('copy');
+        alert("筆記已複製！");
+    }
+</script>
+
+</body>
+</html>
