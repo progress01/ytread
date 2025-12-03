@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>極速筆記工作站 (全鍵盤版)</title>
+    <title>影片筆記工作站 </title>
     <style>
         :root {
             --primary: #2563eb;
@@ -51,6 +51,8 @@
         }
         input:focus { background: #fff; border-color: var(--primary); }
 
+        button { font-family: inherit; }
+
         .btn-load {
             background: var(--primary); color: white; border: none; border-radius: 6px;
             padding: 0 16px; font-weight: bold; cursor: pointer; white-space: nowrap; height: 38px;
@@ -87,7 +89,8 @@
             display: flex;
             gap: 8px;
             align-items: center;
-            overflow-x: auto;
+            overflow-x: auto; /* 手機版橫向捲動 */
+            white-space: nowrap;
         }
         
         .ctrl-btn {
@@ -97,13 +100,13 @@
             padding: 6px 10px;
             font-size: 13px;
             cursor: pointer;
-            white-space: nowrap;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 4px;
             font-weight: 600;
             color: #334155;
             box-shadow: 0 2px 0 rgba(0,0,0,0.05);
+            flex-shrink: 0;
         }
         .ctrl-btn:active { transform: translateY(2px); box-shadow: none; }
         .ctrl-btn:hover { border-color: var(--primary); color: var(--primary); }
@@ -135,20 +138,19 @@
         }
 
         .action-btn {
-            height: 46px; /* 稍微加高以容納提示字 */
+            height: 46px; 
             border: 1px solid transparent; border-radius: 8px;
             font-size: 13px; font-weight: 600; cursor: pointer;
-            display: flex; flex-direction: column; /* 改為垂直排列 */
+            display: flex; flex-direction: column;
             justify-content: center; align-items: center; gap: 1px;
             box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: all 0.1s;
         }
         .action-btn:active { transform: scale(0.97); }
         
-        /* 讓按鈕內的快捷鍵提示字更小 */
         .action-btn .kbd-hint {
             font-size: 9px;
             background: rgba(255,255,255,0.4);
-            color: inherit; /* 跟隨按鈕文字顏色 */
+            color: inherit;
             opacity: 0.8;
         }
 
@@ -183,7 +185,9 @@
             box-shadow: 0 1px 0 #cbd5e1;
         }
 
-        /* RWD */
+        /* --- RWD 設定 --- */
+        
+        /* 電腦/平板版 (寬螢幕) */
         @media (min-width: 768px) {
             #video-wrapper { flex: 6; }
             #note-section { flex: 4; border-left: 1px solid var(--border); }
@@ -192,16 +196,34 @@
             header { flex-direction: row; align-items: center; }
             .header-row { flex: 1; }
         }
+
+        /* 手機版 (窄螢幕) */
         @media (max-width: 767px) {
+            /* 主容器改為直式，允許捲動 */
             #main-container { flex-direction: column; overflow-y: auto; }
+            
+            /* 影片區塊固定在頂部 (Sticky) */
             #video-wrapper {
-                width: 100%; aspect-ratio: 16 / 9; flex: none; position: sticky;
-                top: 0; z-index: 10; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+                width: 100%; 
+                aspect-ratio: 16 / 9; 
+                flex: none; 
+                position: sticky; /* 關鍵：讓影片吸附在頂部 */
+                top: 0; 
+                z-index: 10; 
+                box-shadow: 0 4px 10px rgba(0,0,0,0.2);
             }
+            
+            /* 筆記區塊填滿剩餘空間 */
             #note-section { flex: 1; min-height: 500px; }
+            
+            /* 工具列調整：匯入/匯出按鈕跨兩欄 */
             .btn-import, .btn-copy { grid-column: span 2; }
-            /* 手機版隱藏某些太小的快捷鍵提示，避免擁擠 */
+            
+            /* 手機版隱藏按鈕內的快捷鍵提示，避免擁擠 */
             .action-btn .kbd-hint { display: none; } 
+            
+            /* 底部指南隱藏鍵盤提示，只留雙擊提示 */
+            .footer-guide div:last-child { display: none; }
         }
     </style>
 </head>
@@ -221,8 +243,11 @@
 <div id="status-bar" id="statusMsg"></div>
 
 <div id="bgm-panel" class="panel" style="background: #fce7f3;">
-    <textarea id="bgm-list" class="panel-input" style="height: 100px;" placeholder="貼上多首 YouTube 網址..."></textarea>
-    <button class="btn-confirm bg-pink" onclick="startBgmLoop()">▶️ 循環播放</button>
+    <textarea id="bgm-list" class="panel-input" style="height: 100px;" placeholder="貼上多首 YouTube 網址 (一行一個)..."></textarea>
+    <button class="btn-confirm bg-pink" onclick="startBgmLoop()">▶️ 開始隨機/循環播放</button>
+    <div style="font-size:12px; color:#be185d; margin-top:5px; text-align:right;">
+        💡 單首網址 = 單曲循環 | 多首網址 = 隨機播放
+    </div>
 </div>
 
 <div id="main-container">
@@ -267,11 +292,11 @@
         </div>
 
         <div id="import-panel" class="panel">
-            <textarea id="import-text" class="panel-input" style="height: 100px;" placeholder="貼上時間軸..."></textarea>
+            <textarea id="import-text" class="panel-input" style="height: 100px;" placeholder="貼上時間軸文字..."></textarea>
             <button class="btn-confirm bg-blue" onclick="processImportManual()">確認匯入</button>
         </div>
 
-        <textarea id="notes" placeholder="開始你的學習...&#10;雙擊時間碼可跳轉。"></textarea>
+        <textarea id="notes" placeholder="開始你的學習...&#10;雙擊時間碼 [00:00] 可跳轉影片。"></textarea>
         
         <div class="footer-guide">
             <div>💡 雙擊時間碼跳轉</div>
@@ -296,28 +321,19 @@
     // --- 全域快捷鍵監聽 ---
     document.addEventListener('keydown', function(e) {
         if (e.altKey) {
-            // 避免與瀏覽器預設快捷鍵衝突
             let handled = true;
-            
             switch(e.code) {
-                // 右手區：控制影片
                 case 'KeyJ': seekVideo(-10); break;
                 case 'KeyL': seekVideo(10); break;
                 case 'KeyK': togglePlay(); break;
-
-                // 左手區：快速標籤 (支援主鍵盤數字鍵與數字鍵盤)
                 case 'Digit1': case 'Numpad1': insertTag('重點'); break;
                 case 'Digit2': case 'Numpad2': insertTag('疑問'); break;
                 case 'Digit3': case 'Numpad3': insertTag('待辦'); break;
                 case 'Digit4': case 'Numpad4': insertTag('測試'); break;
                 case 'Digit5': case 'Numpad5': insertTag('其他'); break;
-                
                 default: handled = false;
             }
-
-            if(handled) {
-                e.preventDefault(); // 防止瀏覽器觸發其他行為
-            }
+            if(handled) e.preventDefault();
         }
     });
 
@@ -382,40 +398,135 @@
         const btnLoad = document.getElementById('btnLoad');
         const url = urlInput.value.trim();
         const container = document.getElementById('player-container');
+        
         if (!url) { alert("請輸入網址"); return; }
-        isBgmMode = false; closePanel('bgm-panel');
-        urlInput.blur(); btnLoad.disabled = true; btnLoad.innerHTML = "⌛";
-        container.innerHTML = ''; currentPlatform = null; loadedUrl = url; 
-        const ytId = extractYouTubeID(url); const biliId = extractBilibiliID(url);
+        
+        // 離開 BGM 模式
+        isBgmMode = false; 
+        closePanel('bgm-panel');
+        
+        urlInput.blur(); 
+        btnLoad.disabled = true; 
+        btnLoad.innerHTML = "⌛";
+        
+        // 清理舊播放器
+        if(ytPlayer && typeof ytPlayer.destroy === 'function') {
+            ytPlayer.destroy();
+            ytPlayer = null;
+        }
+
+        container.innerHTML = ''; 
+        currentPlatform = null; 
+        loadedUrl = url; 
+        
+        const ytId = extractYouTubeID(url); 
+        const biliId = extractBilibiliID(url);
+        
         if (ytId) {
             currentPlatform = 'yt';
-            let ytDiv = document.createElement('div'); ytDiv.id = 'yt-player-slot'; container.appendChild(ytDiv);
-            ytPlayer = new YT.Player('yt-player-slot', { height: '100%', width: '100%', videoId: ytId, events: { 'onReady': (e) => e.target.playVideo(), 'onStateChange': onPlayerStateChange } });
+            let ytDiv = document.createElement('div'); 
+            ytDiv.id = 'yt-player-slot'; 
+            container.appendChild(ytDiv);
+            ytPlayer = new YT.Player('yt-player-slot', { 
+                height: '100%', 
+                width: '100%', 
+                videoId: ytId, 
+                events: { 
+                    'onReady': (e) => e.target.playVideo(), 
+                    'onStateChange': onPlayerStateChange 
+                } 
+            });
             await tryAutoFetchDescription(ytId);
         } else if (biliId) {
             currentPlatform = 'bili';
             const biliEmbedUrl = `https://player.bilibili.com/player.html?bvid=${biliId}&high_quality=1&danmaku=0`;
             container.innerHTML = `<iframe src="${biliEmbedUrl}" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"></iframe>`;
             showStatus("Bilibili 不支援外部控制", "warning");
-        } else { alert("網址無效"); }
-        btnLoad.disabled = false; btnLoad.innerHTML = "載入";
+        } else { 
+            alert("網址無效"); 
+        }
+        btnLoad.disabled = false; 
+        btnLoad.innerHTML = "載入";
     }
 
     function toggleBgmPanel() { closePanel('import-panel'); const p = document.getElementById('bgm-panel'); p.style.display = p.style.display==='block'?'none':'block'; }
+
+    // --- BGM 邏輯 (修正版) ---
     function startBgmLoop() {
         const text = document.getElementById('bgm-list').value;
-        const urls = text.split('\n'); bgmPlaylist = [];
-        urls.forEach(u => { const id = extractYouTubeID(u); if(id) bgmPlaylist.push(id); });
-        if(bgmPlaylist.length===0){alert("無效連結");return;}
-        isBgmMode = true; closePanel('bgm-panel');
+        // 過濾空行，確保有內容
+        const urls = text.split('\n').filter(line => line.trim() !== '');
+        
+        bgmPlaylist = [];
+        urls.forEach(u => { 
+            const id = extractYouTubeID(u); 
+            if(id) bgmPlaylist.push(id); 
+        });
+        
+        if(bgmPlaylist.length === 0){ alert("沒有偵測到有效的 YouTube 網址"); return; }
+        
+        isBgmMode = true; 
+        currentPlatform = 'yt';
+        closePanel('bgm-panel');
+        
+        // 為了避免衝突，銷毀並重建
+        if(ytPlayer && typeof ytPlayer.destroy === 'function') {
+            ytPlayer.destroy();
+            ytPlayer = null;
+        }
+        
         document.getElementById('player-container').innerHTML = '<div id="yt-player-slot"></div>';
+        
+        // 開始播放
         playRandomSong();
     }
+
     function playRandomSong() {
+        if(bgmPlaylist.length === 0) return;
+        
+        // 隨機抽選
         const nextId = bgmPlaylist[Math.floor(Math.random() * bgmPlaylist.length)];
-        ytPlayer = new YT.Player('yt-player-slot', { height: '100%', width: '100%', videoId: nextId, events: { 'onReady': (e) => e.target.playVideo(), 'onStateChange': onPlayerStateChange } });
+        
+        // 判斷播放器是否已存在
+        if (ytPlayer && typeof ytPlayer.getVideoData === 'function') {
+            const currentId = ytPlayer.getVideoData().video_id;
+
+            // 如果是同一首歌 (單曲循環或運氣好抽到一樣的)
+            if (currentId === nextId) {
+                // 直接拉回 0 秒，不用重新載入
+                ytPlayer.seekTo(0);
+                ytPlayer.playVideo();
+                showStatus("🔂 單曲循環中", "info");
+            } else {
+                // 不同歌，載入新 ID
+                ytPlayer.loadVideoById(nextId);
+                showStatus("🎵 切換隨機 BGM", "info");
+            }
+        } else {
+            // 第一次播放，建立新播放器
+            ytPlayer = new YT.Player('yt-player-slot', { 
+                height: '100%', 
+                width: '100%', 
+                videoId: nextId, 
+                playerVars: { 'autoplay': 1, 'controls': 1 },
+                events: { 
+                    'onReady': (e) => e.target.playVideo(), 
+                    'onStateChange': onPlayerStateChange 
+                } 
+            });
+            showStatus("▶️ BGM 開始", "success");
+        }
     }
-    function onPlayerStateChange(event) { if (event.data === YT.PlayerState.ENDED && isBgmMode) playRandomSong(); }
+
+    function onPlayerStateChange(event) { 
+        // 影片結束且是 BGM 模式 -> 下一首
+        if (event.data === YT.PlayerState.ENDED && isBgmMode) {
+            playRandomSong(); 
+        }
+    }
+
+    // --- 其他工具函式 ---
+
     async function tryAutoFetchDescription(videoId) {
         showStatus("更新資訊中...", "loading");
         try {
@@ -430,6 +541,7 @@
             } else hideStatus();
         } catch(e) { hideStatus(); }
     }
+    
     function showStatus(msg, type) {
         const bar = document.getElementById('status-bar');
         bar.style.display = 'block'; bar.innerText = msg;
@@ -439,6 +551,7 @@
     }
     function hideStatus() { document.getElementById('status-bar').style.display = 'none'; }
     function closePanel(id) { document.getElementById(id).style.display = 'none'; }
+    
     function parseTimeline(text) {
         const regex = /(\d{1,2}:\d{2}(?::\d{2})?)\s*(.*?)(?=\s*\d{1,2}:\d{2}|$)/gs;
         let match; let result = "\n--------- 🤖 自動匯入章節 ---------\n"; let count = 0;
@@ -447,8 +560,10 @@
         }
         return count>0?result:null;
     }
+    
     function extractYouTubeID(url) { var match = url.match(/^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/); return (match&&match[7].length==11)?match[7]:false; }
     function extractBilibiliID(url) { var match = url.match(/(BV[a-zA-Z0-9]+)/); return match?match[1]:false; }
+    
     function insertTag(tag) {
         let p = ""; if(currentPlatform==='yt'&&ytPlayer&&ytPlayer.getCurrentTime) p=`[${formatTime(ytPlayer.getCurrentTime())}] `;
         insertTextAtCursor(`\n${p}[${tag}] `);
@@ -461,6 +576,7 @@
     }
     function formatTime(s) { var d = new Date(0); d.setSeconds(s); return d.toISOString().substr(11,8); }
     function normalizeTime(t) { const p=t.split(':'); if(p.length===2)return `00:${p[0].padStart(2,'0')}:${p[1].padStart(2,'0')}`; if(p.length===3)return `${p[0].padStart(2,'0')}:${p[1].padStart(2,'0')}:${p[2].padStart(2,'0')}`; return t; }
+    
     function toggleImportPanel() { closePanel('bgm-panel'); const p=document.getElementById('import-panel'); p.style.display=p.style.display==='block'?'none':'block'; }
     function processImportManual() {
         const r = parseTimeline(document.getElementById('import-text').value);
@@ -473,7 +589,7 @@
         const c1 = (r.match(/\[重點\]/g)||[]).length;
         const rep = `# 📝 ${t}\n> 📅 ${d}\n> 🔗 ${loadedUrl}\n\n## 📊 統計\n- ❗ 重點：${c1} 個\n\n## 📋 內容\n---\n${r}\n---`;
         const tmp = document.createElement("textarea"); tmp.value=rep; document.body.appendChild(tmp);
-        tmp.select(); document.execCommand("copy"); document.body.removeChild(tmp); alert("匯入成功");
+        tmp.select(); document.execCommand("copy"); document.body.removeChild(tmp); alert("匯出成功 (已複製)");
     }
 </script>
 
