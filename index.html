@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>影片筆記工作站</title>
     
+    <!-- 核心套件：Markdown 渲染與淨化 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+
     <!-- Firebase CDN -->
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
@@ -37,17 +41,13 @@
             display: flex; flex-direction: column; gap: 8px; z-index: 20; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
             padding-top: max(10px, env(safe-area-inset-top));
         }
-
         .header-row { display: flex; gap: 8px; align-items: center; }
-
         input[type="text"] {
             flex: 1; background: #f1f5f9; border: 1px solid #94a3b8; border-radius: 8px;
             padding: 0 12px; font-size: 16px; height: 40px; outline: none; transition: 0.2s;
         }
         input:focus { background: #fff; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
-
         button { font-family: inherit; }
-
         .btn-load { background: var(--primary); color: white; border: none; border-radius: 8px; padding: 0 16px; font-weight: bold; cursor: pointer; white-space: nowrap; height: 40px; }
         .btn-bgm { background: #f472b6; color: white; border: none; border-radius: 8px; padding: 0 12px; font-weight: bold; cursor: pointer; white-space: nowrap; height: 40px; }
         .btn-menu { background: #e2e8f0; color: #334155; border: none; border-radius: 8px; width: 40px; height: 40px; font-size: 18px; cursor: pointer; display: flex; justify-content: center; align-items: center; }
@@ -64,7 +64,6 @@
         #sidebar.open { transform: translateX(0); }
         .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 90; display: none; backdrop-filter: blur(2px); }
         .sidebar-overlay.show { display: block; }
-        
         .sidebar-header { padding: 15px; border-bottom: 1px solid var(--border); font-weight: bold; color: #475569; display: flex; justify-content: space-between; align-items: center; }
         .doc-list { flex: 1; overflow-y: auto; padding: 10px; -webkit-overflow-scrolling: touch; }
         .doc-item { padding: 12px; background: white; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; cursor: pointer; position: relative; }
@@ -87,9 +86,8 @@
             display: none; backdrop-filter: blur(4px);
         }
 
-        #note-section { background: var(--card-bg); display: flex; flex-direction: column; flex: 1; min-height: 0; }
-
-        /* --- 🎮 影片控制列 --- */
+        /* --- 筆記區與控制列 --- */
+        #note-section { background: var(--card-bg); display: flex; flex-direction: column; flex: 1; min-height: 0; position: relative; }
         .video-controls {
             padding: 8px 10px; background: #f0f9ff; border-bottom: 1px solid var(--border);
             display: flex; gap: 8px; align-items: center; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none;
@@ -105,7 +103,6 @@
         .speed-btn { padding: 8px 10px; font-size: 13px; border: 1px solid #cbd5e1; }
         .speed-active { background: #0f172a; color: white; border-color: #0f172a; }
 
-        /* --- 筆記工具列 --- */
         .toolbar {
             padding: 10px; background: #fff; border-bottom: 1px solid var(--border);
             display: flex; gap: 8px; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none;
@@ -117,37 +114,49 @@
             display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
         }
         .action-btn:active { transform: scale(0.96); }
-        .btn-time { background: #e2e8f0; color: #0f172a; border-color: #cbd5e1; }
-        .btn-imp { background: #fee2e2; color: #dc2626; border-color: #fecaca; }
-        .btn-que { background: #f5f3ff; color: #7c3aed; border-color: #ddd6fe; }
-        .btn-todo { background: #fffbeb; color: #d97706; border-color: #fde68a; }
-        .btn-test { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
-        .btn-oth { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
-        .btn-import { background: #e0f2fe; color: #0284c7; border-color: #bae6fd; margin-left: auto; }
+        
+        .btn-preview { background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; margin-left: auto; }
+        .btn-import { background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; }
         .btn-copy { background: #1e293b; color: #fff; border-color: #0f172a; }
-        .btn-clear { background: #fef2f2; color: #ef4444; border-color: #fecaca; margin-left: auto; }
+        .btn-clear { background: #fef2f2; color: #ef4444; border-color: #fecaca; }
+        .btn-toggle-mode { background: #0f172a; color: #fff; border-color: #0f172a; }
+        .btn-settings { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
         .kbd-hint { font-size: 10px; opacity: 0.6; margin-left: 2px; font-weight: normal; }
 
-        /* 面板與編輯器 */
+        /* --- 模態框 (設定用) --- */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 3000; display: none; justify-content: center; align-items: center; backdrop-filter: blur(2px); padding: 15px; }
+        .settings-box { background: white; width: 100%; max-width: 500px; border-radius: 12px; display: flex; flex-direction: column; max-height: 90vh; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .settings-header { padding: 15px 20px; background: #f8fafc; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .settings-header h3 { margin: 0; color: #0f172a; font-size: 1.1rem; }
+        .settings-body { padding: 20px; overflow-y: auto; flex: 1; }
+        .settings-footer { padding: 15px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; background: #f8fafc; }
+        
+        .settings-row { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; }
+        .tag-setting-item { display: flex; gap: 10px; margin-bottom: 10px; }
+        .tag-emoji-input { width: 50px; text-align: center; }
+        .settings-label { font-size: 0.9rem; font-weight: bold; color: #475569; margin-bottom: 8px; display: block; }
+        .btn-secondary { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); background: white; cursor: pointer; font-weight: bold; color: #475569; }
+
+        /* 面板與狀態 */
         .panel { display: none; padding: 12px; background: #f8fafc; border-bottom: 1px solid var(--border); }
         textarea.panel-input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; margin-bottom: 8px; font-family: monospace; resize: vertical; }
         .btn-confirm { width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; font-size: 15px;}
         .bg-blue { background: #0284c7; } .bg-pink { background: #ec4899; }
         #status-bar { font-size: 13px; padding: 6px 10px; background: #ecfdf5; color: #047857; text-align: center; display: none; border-bottom: 1px solid #a7f3d0; font-weight: bold; }
 
-        textarea#notes {
-            flex: 1; width: 100%; padding: 15px; border: none; resize: none;
-            font-size: 16px; line-height: 1.6; outline: none; cursor: text; -webkit-overflow-scrolling: touch;
-        }
+        /* --- 編輯與預覽區塊 --- */
+        #editor-wrapper { flex: 1; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+        textarea#notes { flex: 1; width: 100%; padding: 15px; border: none; resize: none; font-size: 16px; line-height: 1.6; outline: none; cursor: text; -webkit-overflow-scrolling: touch; }
+        #notes-preview { position: absolute; inset: 0; padding: 15px; background: #fff; font-size: 16px; line-height: 1.6; overflow-y: auto; display: none; -webkit-overflow-scrolling: touch; word-wrap: break-word; white-space: pre-wrap; }
+        
+        .time-link { color: var(--primary); background: #e0f2fe; padding: 2px 6px; border-radius: 4px; cursor: pointer; font-weight: bold; text-decoration: none; display: inline-block; margin: 0 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: 0.2s; }
+        .time-link:active { transform: scale(0.95); background: #bae6fd; }
 
-        .footer-guide { 
-            font-size: 12px; color: #64748b; padding: 10px; background: #f8fafc; border-top: 1px solid #e2e8f0; 
-            display: flex; justify-content: space-between; align-items: center;
-        }
+        .footer-guide { font-size: 12px; color: #64748b; padding: 10px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
         .key-badge { background: #fff; padding: 2px 6px; border-radius: 4px; font-family: monospace; border: 1px solid #cbd5e1; font-weight: bold; box-shadow: 0 1px 0 #cbd5e1; }
 
         /* --- RWD 設定 --- */
-        @media (min-width: 768px) {
+        @media (min-width: 1024px) {
             #main-container { flex-direction: row; }
             #sidebar { position: static; transform: translateX(0); box-shadow: none; }
             #video-wrapper { flex: 6; height: auto !important; }
@@ -156,12 +165,10 @@
             header { flex-direction: row; align-items: center; padding: 15px; }
             .header-row { flex: 1; }
             .toolbar { flex-wrap: wrap; }
-            .btn-import { margin-left: 0; }
-            .btn-clear { margin-left: 0; }
+            .btn-preview { margin-left: auto; }
             .btn-menu { display: none; }
         }
-
-        @media (max-width: 767px) {
+        @media (max-width: 1023px) {
             #main-container { flex-direction: column; }
             #video-wrapper { width: 100%; aspect-ratio: 16 / 9; flex: none; position: sticky; top: 0; z-index: 10; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
             #video-wrapper.collapsed { height: 0; padding-bottom: 0; border-bottom: 2px solid var(--primary); overflow: visible; }
@@ -179,7 +186,7 @@
 <div id="login-screen">
     <div class="login-box">
         <h2 style="margin-top: 0; color: var(--primary);">🎥 影片筆記工作站</h2>
-        <p style="color: #64748b; font-size: 0.95rem;">支援 Shorts、多檔暫存與雲端同步</p>
+        <p style="color: #64748b; font-size: 0.95rem;">自訂情境、自動暫停與雲端同步</p>
         <button class="login-btn" onclick="loginFirebase()">使用 Google 登入</button>
         <button style="background:none; border:none; color:#64748b; width:100%; margin-top:20px; cursor:pointer; text-decoration: underline;" onclick="skipLogin()">先離線使用 (僅限本機)</button>
     </div>
@@ -205,7 +212,6 @@
 </div>
 
 <div id="main-container">
-    <!-- 側邊欄 (多檔筆記庫) -->
     <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
     <div id="sidebar">
         <div class="sidebar-header">
@@ -221,7 +227,6 @@
         </div>
     </div>
 
-    <!-- 影片區 -->
     <div id="video-wrapper">
         <div id="player-container" style="width:100%; height:100%; display:flex; justify-content:center; align-items:center;">
             <div class="placeholder"><p>請載入影片</p></div>
@@ -229,7 +234,6 @@
         <button id="toggle-video-btn" onclick="toggleVideoCollapse()">👀 收起影片</button>
     </div>
     
-    <!-- 筆記區 -->
     <div id="note-section">
         <div class="video-controls">
             <button class="ctrl-btn" onclick="seekVideo(-10)">⏪ <span class="kbd-hint">Alt+J</span></button>
@@ -243,16 +247,8 @@
             </div>
         </div>
 
-        <div class="toolbar">
-            <button class="action-btn btn-time" onmousedown="event.preventDefault(); quickMarkTime()"><span>📌 秒記時間</span></button>
-            <button class="action-btn btn-imp" onmousedown="event.preventDefault(); insertTag('重點')"><span>❗ 重點</span><span class="kbd-hint">Alt+1</span></button>
-            <button class="action-btn btn-que" onmousedown="event.preventDefault(); insertTag('疑問')"><span>❓ 疑問</span><span class="kbd-hint">Alt+2</span></button>
-            <button class="action-btn btn-todo" onmousedown="event.preventDefault(); insertTag('待辦')"><span>☐ 待辦</span><span class="kbd-hint">Alt+3</span></button>
-            <button class="action-btn btn-test" onmousedown="event.preventDefault(); insertTag('測試')"><span>🧪 測試</span><span class="kbd-hint">Alt+4</span></button>
-            <button class="action-btn btn-oth" onmousedown="event.preventDefault(); insertTag('其他')"><span>📝 其他</span><span class="kbd-hint">Alt+5</span></button>
-            <button class="action-btn btn-import" onclick="toggleImportPanel()">📥 匯入章節</button>
-            <button class="action-btn btn-copy" onclick="smartExport()">📤 匯出</button>
-            <button class="action-btn btn-clear" onclick="clearAllData()"><span>🗑️ 清空本機</span></button>
+        <div class="toolbar" id="dynamic-toolbar">
+            <!-- 動態生成的標籤按鈕會放在這裡 -->
         </div>
 
         <div id="import-panel" class="panel">
@@ -260,12 +256,45 @@
             <button class="btn-confirm bg-blue" onclick="processImportManual()">確認匯入</button>
         </div>
 
-        <textarea id="notes" placeholder="開始你的學習...&#10;雙擊時間碼 [00:00] 可跳轉影片。" oninput="saveCurrentDoc()"></textarea>
+        <div id="editor-wrapper">
+            <textarea id="notes" placeholder="開始你的學習...&#10;點擊標籤會自動暫停影片，打完字離開輸入框自動倒退2秒播放！" oninput="saveCurrentDoc()"></textarea>
+            <div id="notes-preview"></div>
+        </div>
         
         <div class="footer-guide">
             <div id="save-status">💾 自動存檔生效中</div>
-            <div id="mobile-hint" style="display:none; color:#dc2626; font-weight:bold;">📱 盲記模式：點擊標籤不會彈出鍵盤</div>
-            <div class="desktop-only"><span class="key-badge">Alt</span> + <span class="key-badge">1~5</span> 標籤 | 雙擊時間碼跳轉</div>
+            <div id="mobile-hint" style="display:none; color:#dc2626; font-weight:bold;">📱 點擊標籤會自動暫停影片並開啟鍵盤</div>
+            <div class="desktop-only"><span class="key-badge">Alt</span> + <span class="key-badge">1~5</span> 標籤</div>
+        </div>
+    </div>
+</div>
+
+<!-- ⚙️ 設定面板 (Settings Modal) -->
+<div class="modal-overlay" id="settingsModal">
+    <div class="settings-box">
+        <div class="settings-header">
+            <h3>⚙️ 自訂情境與標籤</h3>
+            <button class="btn-secondary" style="border:none; background:transparent;" onclick="closeSettings()">✕</button>
+        </div>
+        <div class="settings-body">
+            <label class="settings-label">選擇或管理情境</label>
+            <div class="settings-row">
+                <select id="contextSelect" style="flex:1; padding:8px; border-radius:6px; border:1px solid var(--border);" onchange="loadContextToForm()"></select>
+                <button class="btn-secondary" onclick="createNewContext()">＋ 新增</button>
+                <button class="btn-secondary" style="color:#ef4444; border-color:#fca5a5;" onclick="deleteCurrentContext()">🗑️ 刪除</button>
+            </div>
+            
+            <label class="settings-label">情境名稱</label>
+            <input type="text" id="contextNameInput" style="margin-bottom: 20px;" oninput="updateContextName()">
+
+            <label class="settings-label">快捷標籤設定 (最多 5 個)</label>
+            <div id="tagInputsContainer">
+                <!-- 標籤輸入框由 JS 動態生成 -->
+            </div>
+        </div>
+        <div class="settings-footer">
+            <button class="btn-secondary" onclick="closeSettings()">取消</button>
+            <button class="btn-load" onclick="saveSettings()">💾 儲存並套用</button>
         </div>
     </div>
 </div>
@@ -292,13 +321,38 @@
     let currentId = null;
     let currentPlatform = null; 
     let ytPlayer = null;
+    let ytVideoDuration = 0; // 新增：用於記錄影片總長度，以便決定時間碼格式
     let isBgmMode = false;
     let bgmPlaylist = [];
+    let isPreviewMode = false; 
+    let isAutoPaused = false; 
 
-    // --- UI 響應判斷 ---
-    if (window.innerWidth <= 768) {
-        document.getElementById('mobile-hint').style.display = 'block';
-    }
+    // --- 🔥 動態設定檔 (Settings) ---
+    const defaultSettings = {
+        contexts: [
+            {
+                id: 'learning', name: '📚 學習模式',
+                tags: [ { icon: '💡', text: '核心觀念' }, { icon: '💻', text: '實作細節' }, { icon: '❗', text: '重要考點' }, { icon: '❓', text: '疑問難點' }, { icon: '📝', text: '其他筆記' } ]
+            },
+            {
+                id: 'boss', name: '⚔️ 打王覆盤',
+                tags: [ { icon: '💥', text: '爆發/開招' }, { icon: '🏃', text: '走位/站位' }, { icon: '⚠️', text: 'Boss機制' }, { icon: '❌', text: '失誤/扣招' }, { icon: '❓', text: '疑問' } ]
+            }
+        ],
+        currentContextIndex: 0
+    };
+
+    const tagColorThemes = [
+        { color: '#dc2626', bg: '#fee2e2', border: '#fecaca' }, // Red
+        { color: '#0284c7', bg: '#e0f2fe', border: '#bae6fd' }, // Blue
+        { color: '#d97706', bg: '#fef3c7', border: '#fde68a' }, // Yellow
+        { color: '#059669', bg: '#ecfdf5', border: '#a7f3d0' }, // Green
+        { color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' }  // Purple
+    ];
+
+    let appSettings = JSON.parse(JSON.stringify(defaultSettings));
+
+    if (window.innerWidth <= 1023) { document.getElementById('mobile-hint').style.display = 'block'; }
 
     /* --- 認證與初始化 --- */
     auth.onAuthStateChanged(user => {
@@ -319,452 +373,416 @@
     function skipLogin() { document.getElementById('login-screen').style.display = 'none'; initApp(); }
 
     function initApp() {
-        const localKey = currentUser ? `vnoteworkstation_${currentUser.uid}` : 'vnoteworkstation_local';
-        const saved = localStorage.getItem(localKey);
+        const dataKey = currentUser ? `vnoteworkstation_${currentUser.uid}` : 'vnoteworkstation_local';
+        const savedData = localStorage.getItem(dataKey);
+        if (savedData) { try { docs = JSON.parse(savedData); } catch(e) { docs = []; } }
         
-        if (saved) {
-            try { docs = JSON.parse(saved); } catch(e) { docs = []; }
+        const settingsKey = currentUser ? `vnoteworkstation_settings_${currentUser.uid}` : 'vnoteworkstation_settings_local';
+        const savedSettings = localStorage.getItem(settingsKey);
+        if (savedSettings) { 
+            try { 
+                const parsed = JSON.parse(savedSettings); 
+                if(parsed && parsed.contexts) appSettings = parsed;
+            } catch(e) {} 
         }
-        
-        // 舊版單檔資料無縫轉移處理
-        const oldNotes = localStorage.getItem('vt_notes');
-        const oldTitle = localStorage.getItem('vt_title');
-        const oldUrl = localStorage.getItem('vt_url');
-        if (oldNotes || oldTitle || oldUrl) {
-            if (docs.length === 0) {
-                docs.push({
-                    id: Date.now(),
-                    url: oldUrl || "",
-                    title: oldTitle || "",
-                    content: oldNotes || "",
-                    updatedAt: Date.now()
-                });
-            }
-            localStorage.removeItem('vt_notes');
-            localStorage.removeItem('vt_title');
-            localStorage.removeItem('vt_url');
-        }
-        
-        if (!Array.isArray(docs) || docs.length === 0) {
-            createNewDoc();
-        } else {
-            loadDoc(docs[0].id);
-        }
+
+        if (!Array.isArray(docs) || docs.length === 0) { createNewDoc(); } else { loadDoc(docs[0].id); }
+        renderToolbar();
     }
 
     function saveLocal() {
-        const localKey = currentUser ? `vnoteworkstation_${currentUser.uid}` : 'vnoteworkstation_local';
-        localStorage.setItem(localKey, JSON.stringify(docs));
+        const dataKey = currentUser ? `vnoteworkstation_${currentUser.uid}` : 'vnoteworkstation_local';
+        const settingsKey = currentUser ? `vnoteworkstation_settings_${currentUser.uid}` : 'vnoteworkstation_settings_local';
+        
+        localStorage.setItem(dataKey, JSON.stringify(docs));
+        localStorage.setItem(settingsKey, JSON.stringify(appSettings));
         
         const status = document.getElementById('save-status');
         status.innerText = '✅ 已存檔'; status.style.color = '#059669';
         setTimeout(() => { status.innerText = '💾 自動存檔生效中'; status.style.color = '#64748b'; }, 2000);
     }
 
-    // 🔥 清空本機資料
-    function clearAllData() {
-        if(confirm('⚠️ 確定要清空這台裝置上的「所有筆記庫資料」嗎？\n清空後無法復原！')) {
-            const localKey = currentUser ? `vnoteworkstation_${currentUser.uid}` : 'vnoteworkstation_local';
-            localStorage.removeItem(localKey);
-            docs = [];
-            
-            document.getElementById('notes').value = '';
-            document.getElementById('noteTitle').value = '';
-            document.getElementById('urlInput').value = '';
-            
-            createNewDoc();
-            showStatus('🗑️ 資料已清空，可開始全新筆記', 'success');
+    /* --- ⚙️ 設定系統 --- */
+    function openSettings() { populateContextSelect(); loadContextToForm(); document.getElementById('settingsModal').style.display = 'flex'; }
+    function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
+    function populateContextSelect() {
+        const select = document.getElementById('contextSelect'); select.innerHTML = '';
+        appSettings.contexts.forEach((ctx, index) => {
+            const opt = document.createElement('option'); opt.value = index; opt.text = ctx.name;
+            if(index === appSettings.currentContextIndex) opt.selected = true; select.appendChild(opt);
+        });
+    }
+    function loadContextToForm() {
+        const select = document.getElementById('contextSelect'); const index = parseInt(select.value); if(isNaN(index)) return;
+        appSettings.currentContextIndex = index; const context = appSettings.contexts[index];
+        document.getElementById('contextNameInput').value = context.name;
+        const container = document.getElementById('tagInputsContainer'); container.innerHTML = '';
+        for(let i=0; i<5; i++) {
+            const tag = context.tags[i] || { icon: '', text: '' };
+            const row = document.createElement('div'); row.className = 'tag-setting-item';
+            row.innerHTML = `<input type="text" class="tag-emoji-input" placeholder="圖示" value="${tag.icon}" oninput="updateTempTag(${index}, ${i}, 'icon', this.value)">
+                             <input type="text" style="flex:1; padding:8px; border-radius:6px; border:1px solid #cbd5e1;" placeholder="標籤名稱" value="${tag.text}" oninput="updateTempTag(${index}, ${i}, 'text', this.value)">`;
+            container.appendChild(row);
+        }
+    }
+    function updateContextName() {
+        const index = parseInt(document.getElementById('contextSelect').value);
+        appSettings.contexts[index].name = document.getElementById('contextNameInput').value;
+        document.getElementById('contextSelect').options[index].text = appSettings.contexts[index].name;
+    }
+    function updateTempTag(ctxIndex, tagIndex, field, value) {
+        if(!appSettings.contexts[ctxIndex].tags[tagIndex]) { appSettings.contexts[ctxIndex].tags[tagIndex] = { icon: '', text: '' }; }
+        appSettings.contexts[ctxIndex].tags[tagIndex][field] = value;
+    }
+    function createNewContext() {
+        const newCtx = { id: 'ctx_' + Date.now(), name: '🆕 新情境', tags: [ {icon:'📌', text:'標籤1'}, {icon:'📌', text:'標籤2'} ] };
+        appSettings.contexts.push(newCtx); appSettings.currentContextIndex = appSettings.contexts.length - 1;
+        populateContextSelect(); loadContextToForm();
+    }
+    function deleteCurrentContext() {
+        if(appSettings.contexts.length <= 1) return alert('最少必須保留一個情境！');
+        if(confirm('確定要刪除這個情境嗎？')) { appSettings.contexts.splice(appSettings.currentContextIndex, 1); appSettings.currentContextIndex = 0; populateContextSelect(); loadContextToForm(); }
+    }
+    function saveSettings() {
+        appSettings.contexts.forEach(ctx => { ctx.tags = ctx.tags.filter(t => t.icon.trim() !== '' || t.text.trim() !== ''); });
+        saveLocal(); renderToolbar(); closeSettings(); showStatus('✅ 設定已套用', 'success');
+    }
+
+    /* --- 動態工具列渲染 --- */
+    function renderToolbar() {
+        const toolbar = document.getElementById('dynamic-toolbar');
+        const context = appSettings.contexts[appSettings.currentContextIndex];
+        
+        let html = `<button class="action-btn btn-toggle-mode" onclick="cycleContext()"><span style="max-width:80px; overflow:hidden; text-overflow:ellipsis;">🔄 ${context.name}</span></button>`;
+
+        context.tags.forEach((t, i) => {
+            if(i >= 5) return; 
+            const theme = tagColorThemes[i]; const displayIcon = t.icon ? `${t.icon} ` : '';
+            html += `<button class="action-btn" style="background: ${theme.bg}; color: ${theme.color}; border-color: ${theme.border};" 
+                        onmousedown="event.preventDefault(); insertTag('${displayIcon}${t.text}')">
+                    <span>${displayIcon}${t.text}</span> <span class="kbd-hint">Alt+${i+1}</span></button>`;
+        });
+
+        html += `
+            <button class="action-btn btn-settings" onclick="openSettings()"><span>⚙️ 設定</span></button>
+            <button class="action-btn btn-preview" id="btnPreview" onclick="togglePreviewMode()"><span>📖 預覽</span></button>
+            <button class="action-btn btn-import" onclick="toggleImportPanel()">📥 匯入</button>
+            <button class="action-btn btn-copy" onclick="smartExport()">📤 匯出</button>
+            <button class="action-btn btn-clear" onclick="clearAllData()"><span>🗑️ 清空</span></button>
+        `;
+        toolbar.innerHTML = html;
+        
+        if(isPreviewMode) {
+            const btn = document.getElementById('btnPreview');
+            btn.innerHTML = '<span>✏️ 編輯</span>'; btn.style.background = '#fef3c7'; btn.style.color = '#b45309'; btn.style.borderColor = '#fde68a';
         }
     }
 
-    /* --- ☁️ 雲端同步 --- */
+    function cycleContext() {
+        appSettings.currentContextIndex = (appSettings.currentContextIndex + 1) % appSettings.contexts.length;
+        saveLocal(); renderToolbar(); showStatus(`已切換至 ${appSettings.contexts[appSettings.currentContextIndex].name}`, 'info');
+    }
+
+    /* --- 預覽連結模式 --- */
+    function togglePreviewMode() {
+        isPreviewMode = !isPreviewMode;
+        const textarea = document.getElementById('notes'); const previewArea = document.getElementById('notes-preview'); const btn = document.getElementById('btnPreview');
+        if (isPreviewMode) {
+            let text = textarea.value;
+            text = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const timeRegex = /\[?(\d{1,2}:\d{2}(?::\d{2})?)\]?/g;
+            text = text.replace(timeRegex, '<span class="time-link" onclick="jumpToTimeStr(\'$1\')">▶ $1</span>');
+            text = text.replace(/\n/g, '<br>');
+            previewArea.innerHTML = text; textarea.style.display = 'none'; previewArea.style.display = 'block';
+            btn.innerHTML = '<span>✏️ 回到編輯</span>'; btn.style.background = '#fef3c7'; btn.style.color = '#b45309'; btn.style.borderColor = '#fde68a';
+        } else {
+            textarea.style.display = 'block'; previewArea.style.display = 'none';
+            btn.innerHTML = '<span>📖 預覽</span>'; btn.style.background = '#dbeafe'; btn.style.color = '#1d4ed8'; btn.style.borderColor = '#bfdbfe';
+        }
+    }
+
+    window.jumpToTimeStr = function(timeStr) {
+        const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+        if (timeMatch) {
+            let hours = 0, minutes = 0, seconds = 0;
+            if (timeMatch[3]) { hours = parseInt(timeMatch[1]); minutes = parseInt(timeMatch[2]); seconds = parseInt(timeMatch[3]); } 
+            else { minutes = parseInt(timeMatch[1]); seconds = parseInt(timeMatch[2]); }
+            const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
+            if (currentPlatform === 'yt' && ytPlayer) {
+                document.getElementById('video-wrapper').classList.remove('collapsed');
+                const tBtn = document.getElementById('toggle-video-btn'); if(tBtn) tBtn.innerText = '👀 收起影片';
+                ytPlayer.seekTo(totalSeconds, true); showStatus(`🚀 跳轉至 ${timeStr}`, "success");
+            }
+        }
+    };
+
+    /* --- 雲端同步 --- */
     function saveToCloud() {
         if (!currentUser) return alert('請先登入！');
-        const btn = document.querySelector('.cloud-btn[onclick="saveToCloud()"]');
-        const origText = btn.innerText; btn.innerText = '☁️ 上傳中...';
-        
-        db.collection('VideoNotes_Data').doc(currentUser.uid).set({ docs: docs, updatedAt: firebase.firestore.FieldValue.serverTimestamp() })
-        .then(() => { alert('✅ 備份成功！'); fetchCloudTime(); })
-        .catch(e => alert("上傳失敗：" + e.message))
-        .finally(() => btn.innerText = origText);
+        const btn = document.querySelector('.cloud-btn[onclick="saveToCloud()"]'); const origText = btn.innerText; btn.innerText = '☁️ 上傳中...';
+        const payload = { docs: docs, settings: appSettings, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+        db.collection('VideoNotes_Data').doc(currentUser.uid).set(payload)
+        .then(() => { alert('✅ 筆記與設定備份成功！'); fetchCloudTime(); })
+        .catch(e => alert("上傳失敗：" + e.message)).finally(() => btn.innerText = origText);
     }
 
     function loadFromCloud() {
-        if (!currentUser) return;
-        if (!confirm('⚠️ 警告：這將覆蓋本機目前所有進度。確定還原？')) return;
-        const btn = document.querySelector('.cloud-btn[onclick="loadFromCloud()"]');
-        const origText = btn.innerText; btn.innerText = '📥 下載中...';
-
+        if (!currentUser) return; if (!confirm('⚠️ 警告：這將覆蓋本機目前所有進度與設定。確定還原？')) return;
+        const btn = document.querySelector('.cloud-btn[onclick="loadFromCloud()"]'); const origText = btn.innerText; btn.innerText = '📥 下載中...';
         db.collection('VideoNotes_Data').doc(currentUser.uid).get()
         .then(doc => {
-            if (doc.exists && doc.data().docs) {
-                docs = doc.data().docs; saveLocal();
-                if(docs.length > 0) loadDoc(docs[0].id); else createNewDoc();
-                alert('📥 還原成功！'); fetchCloudTime();
-            } else { alert('雲端無備份資料。'); }
-        })
-        .catch(e => alert("下載失敗：" + e.message))
-        .finally(() => btn.innerText = origText);
+            if (doc.exists) { 
+                const data = doc.data();
+                if(data.docs) docs = data.docs; if(data.settings) appSettings = data.settings;
+                saveLocal(); renderToolbar();
+                if(docs.length > 0) loadDoc(docs[0].id); else createNewDoc(); 
+                alert('📥 筆記與設定還原成功！'); fetchCloudTime(); 
+            } 
+            else { alert('雲端無備份資料。'); }
+        }).catch(e => alert("下載失敗：" + e.message)).finally(() => btn.innerText = origText);
     }
 
     function fetchCloudTime() {
         if (!currentUser) return;
         db.collection('VideoNotes_Data').doc(currentUser.uid).get().then(doc => {
             const el = document.getElementById('cloud-status');
-            if (doc.exists && doc.data().updatedAt) {
-                const d = doc.data().updatedAt.toDate();
-                el.innerText = `☁️ 已同步: ${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-            } else { el.innerText = '☁️ 尚無同步紀錄'; }
+            if (doc.exists && doc.data().updatedAt) { const d = doc.data().updatedAt.toDate(); el.innerText = `☁️ 已同步: ${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`; } 
+            else { el.innerText = '☁️ 尚無同步紀錄'; }
         });
     }
 
-    /* --- 📁 多檔草稿管理 --- */
-    function toggleSidebar() {
-        document.getElementById('sidebar').classList.toggle('open');
-        document.querySelector('.sidebar-overlay').classList.toggle('show');
-    }
-
-    function createNewDoc(url = "", title = "") {
-        const newId = Date.now();
-        const newDoc = { id: newId, url: url, title: title, content: '', updatedAt: newId };
-        docs.unshift(newDoc);
-        loadDoc(newId);
-        if (window.innerWidth <= 768) {
-            document.getElementById('sidebar').classList.remove('open');
-            document.querySelector('.sidebar-overlay').classList.remove('show');
-        }
-    }
-
+    /* --- 多檔草稿管理 --- */
+    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('show'); }
+    function createNewDoc(url = "", title = "") { const newId = Date.now(); const newDoc = { id: newId, url: url, title: title, content: '', updatedAt: newId }; docs.unshift(newDoc); loadDoc(newId); if (window.innerWidth <= 1023) toggleSidebar(); }
+    
     function loadDoc(id) {
-        currentId = id;
-        const doc = docs.find(d => d.id === id);
-        if (!doc) return;
-
-        document.getElementById('noteTitle').value = doc.title || '';
-        document.getElementById('urlInput').value = doc.url || '';
-        document.getElementById('notes').value = doc.content || '';
-        
+        currentId = id; const doc = docs.find(d => d.id === id); if (!doc) return;
+        if(isPreviewMode) togglePreviewMode();
+        document.getElementById('noteTitle').value = doc.title || ''; document.getElementById('urlInput').value = doc.url || ''; document.getElementById('notes').value = doc.content || '';
         renderSidebar();
-        
-        if(doc.url.trim() !== '') { setTimeout(reloadVideoWithoutCheck, 500); }
-        else { document.getElementById('player-container').innerHTML = '<div class="placeholder"><p>請載入影片</p></div>'; }
+        if(doc.url.trim() !== '') { setTimeout(reloadVideoWithoutCheck, 500); } else { document.getElementById('player-container').innerHTML = '<div class="placeholder"><p>請載入影片</p></div>'; }
     }
 
     function saveCurrentDoc() {
-        if (!currentId) return;
+        if (!currentId) return; if (isPreviewMode) return; 
         const doc = docs.find(d => d.id === currentId);
-        if (doc) {
-            doc.title = document.getElementById('noteTitle').value;
-            doc.url = document.getElementById('urlInput').value;
-            doc.content = document.getElementById('notes').value;
-            doc.updatedAt = Date.now();
-            saveLocal();
-            renderSidebar();
-        }
+        if (doc) { doc.title = document.getElementById('noteTitle').value; doc.url = document.getElementById('urlInput').value; doc.content = document.getElementById('notes').value; doc.updatedAt = Date.now(); saveLocal(); renderSidebar(); }
     }
 
     function deleteDoc(id) {
-        if(confirm('確定要刪除這份筆記嗎？')) {
-            docs = docs.filter(d => d.id !== id);
-            saveLocal();
-            if(docs.length === 0) createNewDoc();
-            else if(currentId === id) loadDoc(docs[0].id);
-            else renderSidebar();
+        if(confirm('確定要刪除這份筆記嗎？')) { docs = docs.filter(d => d.id !== id); saveLocal(); if(docs.length === 0) createNewDoc(); else if(currentId === id) loadDoc(docs[0].id); else renderSidebar(); }
+    }
+
+    function clearAllData() {
+        if(confirm('⚠️ 確定要清空這台裝置上的「所有筆記庫資料」嗎？\n清空後無法復原！')) {
+            const localKey = currentUser ? `vnoteworkstation_${currentUser.uid}` : 'vnoteworkstation_local';
+            localStorage.removeItem(localKey); docs = []; createNewDoc(); showStatus('🗑️ 資料已清空', 'success');
         }
     }
 
     function renderSidebar() {
-        const list = document.getElementById('docList');
-        list.innerHTML = '';
+        const list = document.getElementById('docList'); list.innerHTML = '';
         const sortedDocs = [...docs].sort((a,b) => b.updatedAt - a.updatedAt);
-        
         sortedDocs.forEach(d => {
             const dateStr = new Date(d.updatedAt).toLocaleString('zh-TW', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
             const displayTitle = d.title ? d.title : (d.url ? '未命名影片' : '新空白筆記');
-            
-            const div = document.createElement('div');
-            div.className = `doc-item ${d.id === currentId ? 'active' : ''}`;
-            div.innerHTML = `
-                <div class="doc-title" onclick="loadDoc(${d.id})">${displayTitle}</div>
-                <div class="doc-meta">${dateStr}</div>
-                <div class="doc-del" onclick="event.stopPropagation(); deleteDoc(${d.id})">🗑️</div>
-            `;
+            const div = document.createElement('div'); div.className = `doc-item ${d.id === currentId ? 'active' : ''}`;
+            div.innerHTML = `<div class="doc-title" onclick="loadDoc(${d.id})">${displayTitle}</div><div class="doc-meta">${dateStr}</div><div class="doc-del" onclick="event.stopPropagation(); deleteDoc(${d.id})">🗑️</div>`;
             list.appendChild(div);
         });
     }
 
-    /* --- 🎬 影片解析與控制 --- */
-    function toggleVideoCollapse() {
-        const wrapper = document.getElementById('video-wrapper');
-        const btn = document.getElementById('toggle-video-btn');
-        wrapper.classList.toggle('collapsed');
-        btn.innerText = wrapper.classList.contains('collapsed') ? '📺 展開影片' : '👀 收起影片';
-    }
-
-    function extractYouTubeID(url) { 
-        const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/); 
-        return match ? match[1] : false; 
-    }
+    /* --- 影片解析與控制 --- */
+    function toggleVideoCollapse() { const wrapper = document.getElementById('video-wrapper'); const btn = document.getElementById('toggle-video-btn'); wrapper.classList.toggle('collapsed'); btn.innerText = wrapper.classList.contains('collapsed') ? '📺 展開影片' : '👀 收起影片'; }
+    function extractYouTubeID(url) { const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/); return match ? match[1] : false; }
     function extractBilibiliID(url) { const match = url.match(/(BV[a-zA-Z0-9]+)/); return match?match[1]:false; }
 
-    // 觸發重新載入影片(不查重)
-    async function reloadVideoWithoutCheck() {
-        const rawUrl = document.getElementById('urlInput').value.trim();
-        await performLoad(rawUrl);
-    }
+    async function reloadVideoWithoutCheck() { const rawUrl = document.getElementById('urlInput').value.trim(); await performLoad(rawUrl); }
 
-    // ⚡ 加入「零成本記憶體查重」的載入函數
     async function detectAndLoad() {
-        const urlInput = document.getElementById('urlInput');
-        const rawUrl = urlInput.value.trim();
-        
+        const urlInput = document.getElementById('urlInput'); const rawUrl = urlInput.value.trim();
         if (!rawUrl) { alert("請輸入網址"); return; }
 
-        const newYtId = extractYouTubeID(rawUrl);
-        const newBiliId = extractBilibiliID(rawUrl);
-        const targetId = newYtId || newBiliId;
-
-        // 查重：記憶體比對
+        const targetId = extractYouTubeID(rawUrl) || extractBilibiliID(rawUrl);
         if (targetId) {
-            const existingDoc = docs.find(d => {
-                if (d.id === currentId) return false; 
-                const dYt = extractYouTubeID(d.url);
-                const dBili = extractBilibiliID(d.url);
-                return (dYt === targetId) || (dBili === targetId);
-            });
-
-            if (existingDoc) {
-                if(confirm("這部影片已經存在於筆記庫，是否直接切換到該份筆記？")) {
-                    loadDoc(existingDoc.id); 
-                    return; 
-                }
-            }
+            const existingDoc = docs.find(d => { if (d.id === currentId) return false; return (extractYouTubeID(d.url) === targetId) || (extractBilibiliID(d.url) === targetId); });
+            if (existingDoc) { if(confirm("這部影片已經存在於筆記庫，是否直接切換到該份筆記？")) { loadDoc(existingDoc.id); return; } }
         }
-        
-        saveCurrentDoc();
-        await performLoad(rawUrl);
+        saveCurrentDoc(); await performLoad(rawUrl);
     }
 
     async function performLoad(rawUrl) {
-        const btnLoad = document.getElementById('btnLoad');
-        const container = document.getElementById('player-container');
-        
-        isBgmMode = false; closePanel('bgm-panel');
-        document.getElementById('urlInput').blur(); 
-        btnLoad.disabled = true; btnLoad.innerHTML = "⌛";
-        
+        const btnLoad = document.getElementById('btnLoad'); const container = document.getElementById('player-container');
+        isBgmMode = false; closePanel('bgm-panel'); document.getElementById('urlInput').blur(); btnLoad.disabled = true; btnLoad.innerHTML = "⌛";
         if(ytPlayer && typeof ytPlayer.destroy === 'function') { ytPlayer.destroy(); ytPlayer = null; }
-
-        container.innerHTML = ''; currentPlatform = null;
+        container.innerHTML = ''; currentPlatform = null; ytVideoDuration = 0; // 重置長度
         
-        const ytId = extractYouTubeID(rawUrl); 
-        const biliId = extractBilibiliID(rawUrl);
+        const ytId = extractYouTubeID(rawUrl); const biliId = extractBilibiliID(rawUrl);
         
         if (ytId) {
-            currentPlatform = 'yt';
-            let ytDiv = document.createElement('div'); ytDiv.id = 'yt-player-slot'; 
-            container.appendChild(ytDiv);
-            ytPlayer = new YT.Player('yt-player-slot', { 
-                height: '100%', width: '100%', videoId: ytId, 
-                playerVars: { 'playsinline': 1 }, 
-                events: { 'onStateChange': onPlayerStateChange } 
-            });
-            await tryAutoFetchDescription(ytId);
+            currentPlatform = 'yt'; let ytDiv = document.createElement('div'); ytDiv.id = 'yt-player-slot'; container.appendChild(ytDiv);
+            ytPlayer = new YT.Player('yt-player-slot', { height: '100%', width: '100%', videoId: ytId, playerVars: { 'playsinline': 1 }, events: { 'onStateChange': onPlayerStateChange } });
+            // API Timeout 機制
+            Promise.race([
+                tryAutoFetchDescription(ytId),
+                new Promise(resolve => setTimeout(resolve, 3000))
+            ]).then(() => { btnLoad.disabled = false; btnLoad.innerHTML = "載入"; });
         } else if (biliId) {
-            currentPlatform = 'bili';
-            container.innerHTML = `<iframe src="https://player.bilibili.com/player.html?bvid=${biliId}&high_quality=1&danmaku=0" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true" style="width:100%;height:100%;"></iframe>`;
-            showStatus("Bilibili 載入成功", "info");
-        } else { 
-            alert("網址無法解析"); 
-        }
-        btnLoad.disabled = false; btnLoad.innerHTML = "載入";
+            currentPlatform = 'bili'; container.innerHTML = `<iframe src="https://player.bilibili.com/player.html?bvid=${biliId}&high_quality=1&danmaku=0" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true" style="width:100%;height:100%;"></iframe>`; showStatus("Bilibili 載入成功", "info");
+            btnLoad.disabled = false; btnLoad.innerHTML = "載入";
+        } else { alert("網址無法解析"); btnLoad.disabled = false; btnLoad.innerHTML = "載入"; }
     }
 
     // --- BGM 與快捷鍵 ---
     function toggleBgmPanel() { closePanel('import-panel'); const p = document.getElementById('bgm-panel'); p.style.display = p.style.display==='block'?'none':'block'; }
     function startBgmLoop() {
-        const text = document.getElementById('bgm-list').value;
-        const urls = text.split('\n').filter(line => line.trim() !== '');
-        bgmPlaylist = []; urls.forEach(u => { const id = extractYouTubeID(u); if(id) bgmPlaylist.push(id); });
+        const text = document.getElementById('bgm-list').value; const urls = text.split('\n').filter(line => line.trim() !== ''); bgmPlaylist = []; urls.forEach(u => { const id = extractYouTubeID(u); if(id) bgmPlaylist.push(id); });
         if(bgmPlaylist.length === 0){ alert("無效網址"); return; }
-        
         isBgmMode = true; currentPlatform = 'yt'; closePanel('bgm-panel');
         if(ytPlayer && typeof ytPlayer.destroy === 'function') { ytPlayer.destroy(); ytPlayer = null; }
-        document.getElementById('player-container').innerHTML = '<div id="yt-player-slot"></div>';
-        playRandomSong();
+        document.getElementById('player-container').innerHTML = '<div id="yt-player-slot"></div>'; playRandomSong();
     }
     function playRandomSong() {
-        if(bgmPlaylist.length === 0) return;
-        const nextId = bgmPlaylist[Math.floor(Math.random() * bgmPlaylist.length)];
+        if(bgmPlaylist.length === 0) return; const nextId = bgmPlaylist[Math.floor(Math.random() * bgmPlaylist.length)];
         if (ytPlayer && typeof ytPlayer.getVideoData === 'function') {
             if (ytPlayer.getVideoData().video_id === nextId) { ytPlayer.seekTo(0); ytPlayer.playVideo(); showStatus("🔂 單曲循環", "info"); } 
             else { ytPlayer.loadVideoById(nextId); showStatus("🎵 切換 BGM", "info"); }
         } else {
-            ytPlayer = new YT.Player('yt-player-slot', { 
-                height: '100%', width: '100%', videoId: nextId, 
-                playerVars: { 'autoplay': 1, 'controls': 1, 'playsinline': 1 },
-                events: { 'onReady': (e) => e.target.playVideo(), 'onStateChange': onPlayerStateChange } 
-            });
-            showStatus("▶️ BGM 開始", "success");
+            ytPlayer = new YT.Player('yt-player-slot', { height: '100%', width: '100%', videoId: nextId, playerVars: { 'autoplay': 1, 'controls': 1, 'playsinline': 1 }, events: { 'onReady': (e) => e.target.playVideo(), 'onStateChange': onPlayerStateChange } }); showStatus("▶️ BGM 開始", "success");
         }
     }
-    function onPlayerStateChange(event) { if (event.data === YT.PlayerState.ENDED && isBgmMode) { playRandomSong(); } }
+    
+    function onPlayerStateChange(event) { 
+        if (event.data === YT.PlayerState.PLAYING && ytVideoDuration === 0) {
+            ytVideoDuration = ytPlayer.getDuration(); // 取得影片總長度
+        }
+        if (event.data === YT.PlayerState.ENDED && isBgmMode) { playRandomSong(); } 
+    }
 
     document.addEventListener('keydown', function(e) {
         if (e.altKey) {
             let handled = true;
+            const context = appSettings.contexts[appSettings.currentContextIndex];
+            const tags = context.tags;
+            
             switch(e.code) {
                 case 'KeyJ': seekVideo(-10); break;
                 case 'KeyL': seekVideo(10); break;
                 case 'KeyK': togglePlay(); break;
-                case 'Digit1': case 'Numpad1': insertTag('重點'); break;
-                case 'Digit2': case 'Numpad2': insertTag('疑問'); break;
-                case 'Digit3': case 'Numpad3': insertTag('待辦'); break;
-                case 'Digit4': case 'Numpad4': insertTag('測試'); break;
-                case 'Digit5': case 'Numpad5': insertTag('其他'); break;
+                case 'Digit1': case 'Numpad1': if(tags[0]) insertTag(`${tags[0].icon ? tags[0].icon+' ' : ''}${tags[0].text}`); break;
+                case 'Digit2': case 'Numpad2': if(tags[1]) insertTag(`${tags[1].icon ? tags[1].icon+' ' : ''}${tags[1].text}`); break;
+                case 'Digit3': case 'Numpad3': if(tags[2]) insertTag(`${tags[2].icon ? tags[2].icon+' ' : ''}${tags[2].text}`); break;
+                case 'Digit4': case 'Numpad4': if(tags[3]) insertTag(`${tags[3].icon ? tags[3].icon+' ' : ''}${tags[3].text}`); break;
+                case 'Digit5': case 'Numpad5': if(tags[4]) insertTag(`${tags[4].icon ? tags[4].icon+' ' : ''}${tags[4].text}`); break;
                 default: handled = false;
             }
             if(handled) { e.preventDefault(); }
         }
     });
 
-    function seekVideo(seconds) {
-        if (currentPlatform !== 'yt' || !ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
-        ytPlayer.seekTo(ytPlayer.getCurrentTime() + seconds, true);
-        showStatus(seconds > 0 ? `⏩ 快轉` : `⏪ 倒退`, "info");
-    }
-    function togglePlay() {
-        if (currentPlatform !== 'yt' || !ytPlayer || typeof ytPlayer.getPlayerState !== 'function') return;
-        if (ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) { ytPlayer.pauseVideo(); showStatus("⏸️ 暫停", "info"); } 
-        else { ytPlayer.playVideo(); showStatus("▶️ 播放", "info"); }
-    }
-    function setSpeed(rate, btn) {
-        if (currentPlatform !== 'yt' || !ytPlayer || typeof ytPlayer.setPlaybackRate !== 'function') return;
-        ytPlayer.setPlaybackRate(rate);
-        document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('speed-active'));
-        if(btn) btn.classList.add('speed-active');
-        showStatus(`🚀 ${rate}x`, "info");
-    }
-
-    // --- 影片跳轉 ---
-    document.getElementById('notes').addEventListener('dblclick', function(e) {
-        const text = e.target.value; const cursorPos = e.target.selectionStart;
-        const lineStart = text.lastIndexOf('\n', cursorPos - 1) + 1;
-        let lineEnd = text.indexOf('\n', cursorPos); if (lineEnd === -1) lineEnd = text.length;
-        const currentLine = text.substring(lineStart, lineEnd);
-        const timeMatch = currentLine.match(/(?:\[)?(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\])?/);
-
-        if (timeMatch) {
-            let hours = 0, minutes = 0, seconds = 0;
-            if (timeMatch[3]) { hours = parseInt(timeMatch[1]); minutes = parseInt(timeMatch[2]); seconds = parseInt(timeMatch[3]); } 
-            else { minutes = parseInt(timeMatch[1]); seconds = parseInt(timeMatch[2]); }
-            const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
-            
-            if (currentPlatform === 'yt' && ytPlayer) {
-                document.getElementById('video-wrapper').classList.remove('collapsed');
-                const tBtn = document.getElementById('toggle-video-btn'); if(tBtn) tBtn.innerText = '👀 收起影片';
-                ytPlayer.seekTo(totalSeconds, true);
-                showStatus(`🚀 跳轉 ${timeMatch[0]}`, "success");
-            }
-        }
-    });
+    function seekVideo(seconds) { if (currentPlatform !== 'yt' || !ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return; ytPlayer.seekTo(ytPlayer.getCurrentTime() + seconds, true); showStatus(seconds > 0 ? `⏩ 快轉` : `⏪ 倒退`, "info"); }
+    function togglePlay() { if (currentPlatform !== 'yt' || !ytPlayer || typeof ytPlayer.getPlayerState !== 'function') return; if (ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) { ytPlayer.pauseVideo(); showStatus("⏸️ 暫停", "info"); } else { ytPlayer.playVideo(); showStatus("▶️ 播放", "info"); } }
+    function setSpeed(rate, btn) { if (currentPlatform !== 'yt' || !ytPlayer || typeof ytPlayer.setPlaybackRate !== 'function') return; ytPlayer.setPlaybackRate(rate); document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('speed-active')); if(btn) btn.classList.add('speed-active'); showStatus(`🚀 ${rate}x`, "info"); }
 
     async function tryAutoFetchDescription(videoId) {
-        try {
-            const res = await fetch(`https://inv.tux.pizza/api/v1/videos/${videoId}`);
-            if (!res.ok) return;
-            const data = await res.json();
-            const titleEl = document.getElementById('noteTitle');
-            if(!titleEl.value.trim()) { titleEl.value = data.title; saveCurrentDoc(); }
-            const ch = parseTimeline(data.description);
-            const notesEl = document.getElementById('notes');
-            if(ch && notesEl.value.trim() === "") {
-                notesEl.value = ch + "\n--------------------------------\n";
-                saveCurrentDoc(); showStatus("✅ 自動匯入章節", "success");
-            }
-        } catch(e) {}
+        const res = await fetch(`https://inv.tux.pizza/api/v1/videos/${videoId}`);
+        if (!res.ok) return; const data = await res.json();
+        const titleEl = document.getElementById('noteTitle');
+        if(!titleEl.value.trim()) { titleEl.value = data.title; saveCurrentDoc(); }
+        const ch = parseTimeline(data.description); const notesEl = document.getElementById('notes');
+        if(ch && notesEl.value.trim() === "") { notesEl.value = ch + "\n--------------------------------\n"; saveCurrentDoc(); showStatus("✅ 自動匯入章節", "success"); }
     }
     
-    // --- 盲記與文字插入 ---
-    function quickMarkTime() {
-        let p = `[00:00:00]`;
-        if(currentPlatform==='yt' && ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
-            p = `[${formatTime(ytPlayer.getCurrentTime())}]`;
-        }
-        insertTextMobileFriendly(`\n${p} `);
-    }
+    // --- 🧠 智慧暫停與文字插入 ---
+    const notesArea = document.getElementById('notes');
 
     function insertTag(tag) {
+        if(isPreviewMode) return alert("請先切回編輯模式");
         let p = ""; 
         if(currentPlatform==='yt' && ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
             p = `[${formatTime(ytPlayer.getCurrentTime())}] `;
+            if (ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) {
+                ytPlayer.pauseVideo(); isAutoPaused = true; showStatus("⏸️ 影片已暫停，請輸入筆記", "info");
+            }
         }
-        const tagText = tag ? `[${tag}] ` : '';
+        const tagText = tag ? `${tag} - ` : '';
         insertTextMobileFriendly(`\n${p}${tagText}`);
     }
 
     function insertTextMobileFriendly(text) {
-        const notesEl = document.getElementById('notes');
-        const s = notesEl.selectionStart; const e = notesEl.selectionEnd;
-        notesEl.value = notesEl.value.substring(0,s) + text + notesEl.value.substring(e);
-        notesEl.selectionStart = notesEl.selectionEnd = s + text.length;
+        const s = notesArea.selectionStart; const e = notesArea.selectionEnd;
+        notesArea.value = notesArea.value.substring(0,s) + text + notesArea.value.substring(e);
+        notesArea.selectionStart = notesArea.selectionEnd = s + text.length;
         
         saveCurrentDoc();
-
-        if (window.innerWidth > 768) {
-            notesEl.focus(); 
-        } else {
-            notesEl.scrollTop = notesEl.scrollHeight;
-            showStatus(`✅ 已記錄`, "success");
-        }
+        notesArea.focus(); 
+        notesArea.scrollTop = notesArea.scrollHeight;
     }
+
+    notesArea.addEventListener('focus', () => {
+        if (currentPlatform === 'yt' && ytPlayer && typeof ytPlayer.getPlayerState === 'function') {
+            if (ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) {
+                ytPlayer.pauseVideo(); isAutoPaused = true; showStatus("⏸️ 打字中...影片已暫停", "info");
+            }
+        }
+    });
+
+    notesArea.addEventListener('blur', () => {
+        if (isAutoPaused && currentPlatform === 'yt' && ytPlayer && typeof ytPlayer.playVideo === 'function') {
+            const currentTime = ytPlayer.getCurrentTime();
+            ytPlayer.seekTo(Math.max(0, currentTime - 2), true); 
+            // 嘗試播放，若被行動端 OS 攔截則不報錯
+            try { ytPlayer.playVideo(); } catch(e) {}
+            isAutoPaused = false; showStatus("▶️ 繼續播放 (微倒退 2 秒)", "success");
+        }
+    });
 
     // --- 工具函式 ---
-    function showStatus(msg, type) {
-        const bar = document.getElementById('status-bar');
-        bar.style.display = 'block'; bar.innerText = msg;
-        bar.style.background = type==='success'?'#ecfdf5':'#f1f5f9';
-        bar.style.color = type==='success'?'#047857':'#0f172a';
-        bar.style.borderBottomColor = type==='success'?'#a7f3d0':'#cbd5e1';
-        setTimeout(() => bar.style.display = 'none', 2000);
-    }
+    function showStatus(msg, type) { const bar = document.getElementById('status-bar'); bar.style.display = 'block'; bar.innerText = msg; bar.style.background = type==='success'?'#ecfdf5':(type==='info'?'#eff6ff':'#f1f5f9'); bar.style.color = type==='success'?'#047857':(type==='info'?'#1d4ed8':'#0f172a'); bar.style.borderBottomColor = type==='success'?'#a7f3d0':(type==='info'?'#bfdbfe':'#cbd5e1'); setTimeout(() => bar.style.display = 'none', 2000); }
     function closePanel(id) { document.getElementById(id).style.display = 'none'; }
-    function parseTimeline(text) {
-        const regex = /(\d{1,2}:\d{2}(?::\d{2})?)\s*(.*?)(?=\s*\d{1,2}:\d{2}|$)/gs;
-        let match; let result = "\n--------- 🤖 自動匯入章節 ---------\n"; let count = 0;
-        while ((match = regex.exec(text)) !== null) { let content = match[2].trim(); if(content){ result += `[${normalizeTime(match[1])}] 📌 ${content}\n`; count++; } }
-        return count>0?result:null;
+    function parseTimeline(text) { const regex = /(\d{1,2}:\d{2}(?::\d{2})?)\s*(.*?)(?=\s*\d{1,2}:\d{2}|$)/gs; let match; let result = "\n--------- 🤖 自動匯入章節 ---------\n"; let count = 0; while ((match = regex.exec(text)) !== null) { let content = match[2].trim(); if(content){ result += `[${normalizeTime(match[1])}] 📌 ${content}\n`; count++; } } return count>0?result:null; }
+    
+    // 🔥 時間碼精簡化邏輯
+    function formatTime(s) { 
+        var d = new Date(0); d.setSeconds(s); 
+        // 如果影片長度小於 1 小時 (3600秒)，省略小時的顯示
+        if (ytVideoDuration > 0 && ytVideoDuration < 3600) {
+            return d.toISOString().substr(14,5); // 回傳 MM:SS
+        }
+        return d.toISOString().substr(11,8); // 回傳 HH:MM:SS
     }
-    function formatTime(s) { var d = new Date(0); d.setSeconds(s); return d.toISOString().substr(11,8); }
+    
     function normalizeTime(t) { const p=t.split(':'); if(p.length===2)return `00:${p[0].padStart(2,'0')}:${p[1].padStart(2,'0')}`; if(p.length===3)return `${p[0].padStart(2,'0')}:${p[1].padStart(2,'0')}:${p[2].padStart(2,'0')}`; return t; }
     
     // --- 匯入/匯出 ---
     function toggleImportPanel() { closePanel('bgm-panel'); const p=document.getElementById('import-panel'); p.style.display=p.style.display==='block'?'none':'block'; }
-    function processImportManual() {
-        const r = parseTimeline(document.getElementById('import-text').value);
-        if(r) { document.getElementById('notes').value += r+"\n"; closePanel('import-panel'); saveCurrentDoc(); alert("匯入成功"); } else alert("格式錯誤");
-    }
+    function processImportManual() { const r = parseTimeline(document.getElementById('import-text').value); if(r) { document.getElementById('notes').value += r+"\n"; closePanel('import-panel'); saveCurrentDoc(); alert("匯入成功"); } else alert("格式錯誤"); }
 
+    // 🔥 完整統計報表匯出邏輯
     function smartExport() {
-        const r = document.getElementById('notes').value;
-        const t = document.getElementById('noteTitle').value || "未命名筆記";
-        const d = new Date().toISOString().slice(0,10);
-        const url = document.getElementById('urlInput').value;
-        const c1 = (r.match(/\[重點\]/g)||[]).length;
-        const rep = `# 📝 ${t}\n> 📅 ${d}\n> 🔗 ${url}\n\n## 📊 統計\n- ❗ 重點：${c1} 個\n\n## 📋 內容\n---\n${r}\n---`;
+        const r = document.getElementById('notes').value; const t = document.getElementById('noteTitle').value || "未命名筆記"; const d = new Date().toISOString().slice(0,10); const url = document.getElementById('urlInput').value;
         
-        if (navigator.share && window.innerWidth < 768) {
-            navigator.share({ title: t, text: rep }).catch(() => copyToClipboard(rep));
-        } else {
-            copyToClipboard(rep);
-        }
+        const context = appSettings.contexts[appSettings.currentContextIndex];
+        let statsHtml = '';
+        
+        // 迴圈統計所有 5 個標籤
+        context.tags.forEach(tag => {
+            const tagFullText = `${tag.icon ? tag.icon+' ' : ''}${tag.text}`;
+            const regex = new RegExp(tagFullText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+            const count = (r.match(regex)||[]).length;
+            if (count > 0) {
+                statsHtml += `- ${tagFullText}：${count} 次\n`;
+            }
+        });
+
+        if (statsHtml === '') statsHtml = '- 無標籤紀錄\n';
+        
+        const rep = `# 📝 ${t}\n> 📅 ${d}\n> 🔗 ${url}\n\n## 📊 統計\n${statsHtml}\n## 📋 內容\n---\n${r}\n---`;
+        
+        if (navigator.share && window.innerWidth < 1024) { navigator.share({ title: t, text: rep }).catch(() => copyToClipboard(rep)); } else { copyToClipboard(rep); }
     }
 
-    function copyToClipboard(text) {
-        const tmp = document.createElement("textarea"); tmp.value=text; document.body.appendChild(tmp);
-        tmp.select(); document.execCommand("copy"); document.body.removeChild(tmp); 
-        alert("匯出成功 (已複製到剪貼簿)");
-    }
+    function copyToClipboard(text) { const tmp = document.createElement("textarea"); tmp.value=text; document.body.appendChild(tmp); tmp.select(); document.execCommand("copy"); document.body.removeChild(tmp); alert("匯出成功 (已複製到剪貼簿)"); }
 </script>
 
 </body>
